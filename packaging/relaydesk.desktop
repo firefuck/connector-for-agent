@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=RelayDesk Connector
+Comment=Connect this desktop to your agent gateway
+Exec=relaydesk
+Terminal=true
+Categories=Network;RemoteAccess;

@@ -1,0 +1,19 @@
+services:
+  gateway:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${RELAYDESK_BIND_IP:-127.0.0.1}:8787:8787"
+    environment:
+      RELAYDESK_ADMIN_TOKEN: ${RELAYDESK_ADMIN_TOKEN:?Set a strong admin token in .env}
+    volumes:
+      - gateway-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 10s
+volumes:
+  gateway-data:
