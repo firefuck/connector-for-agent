@@ -13,11 +13,17 @@ trap 'rm -rf "$test_root"' EXIT HUP INT TERM
 install_root="$test_root/root"
 mkdir -p "$install_root/var/lib/dpkg/updates" "$install_root/var/lib/dpkg/info"
 touch "$install_root/var/lib/dpkg/status"
-dpkg --root="$install_root" --log="$test_root/dpkg.log" --force-not-root --force-depends --force-bad-path --no-triggers --install "$package"
+# Keep package documentation in this test even if the host excludes docs.
+dpkg --path-include='/usr/share/doc/relaydesk/*' --root="$install_root" --log="$test_root/dpkg.log" --force-not-root --force-depends --force-bad-path --no-triggers --install "$package"
 test "$("$install_root/usr/bin/relaydesk" version)" = 'RelayDesk 0.1.0'
 test -r "$install_root/usr/share/icons/hicolor/scalable/apps/relaydesk.svg"
 test "$(stat -c %a "$install_root/usr/share/applications/relaydesk.desktop")" = 644
 desktop-file-validate "$install_root/usr/share/applications/relaydesk.desktop"
+for notice in LICENSE NOTICE THIRD_PARTY_NOTICES.md; do
+ cmp "$notice" "$install_root/usr/share/doc/relaydesk/$notice"
+done
+cat NOTICE LICENSE THIRD_PARTY_NOTICES.md > "$test_root/expected-copyright"
+cmp "$test_root/expected-copyright" "$install_root/usr/share/doc/relaydesk/copyright"
 
 export XDG_CONFIG_HOME="$test_root/config with spaces"
 unset SUDO_USER
@@ -42,8 +48,9 @@ test ! -e "$XDG_CONFIG_HOME/relaydesk/connector.json"
 test -f "$XDG_CONFIG_HOME/relaydesk/unrelated.txt"
 printf '{}\n' > "$XDG_CONFIG_HOME/relaydesk/connector.json"
 
-dpkg --root="$install_root" --log="$test_root/dpkg.log" --force-not-root --force-depends --force-bad-path --no-triggers --remove relaydesk
+dpkg --path-include='/usr/share/doc/relaydesk/*' --root="$install_root" --log="$test_root/dpkg.log" --force-not-root --force-depends --force-bad-path --no-triggers --remove relaydesk
 test ! -e "$install_root/usr/bin/relaydesk"
+test ! -e "$install_root/usr/share/doc/relaydesk/LICENSE"
 test ! -e "$install_root/usr/share/applications/relaydesk.desktop"
 test ! -e "$install_root/usr/share/icons/hicolor/scalable/apps/relaydesk.svg"
 test ! -e "$install_root/usr/share/relaydesk/autostart-linux.sh"

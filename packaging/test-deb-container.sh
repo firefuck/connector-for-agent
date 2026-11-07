@@ -20,6 +20,10 @@ sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.
 apt-get -o Acquire::https::CaInfo=/run/relaydesk-test-ca.pem update
 apt-get -o Acquire::https::CaInfo=/run/relaydesk-test-ca.pem install -y --no-install-recommends /tmp/relaydesk.deb desktop-file-utils
 test "$(relaydesk version)" = 'RelayDesk 0.1.0'
+test -s /usr/share/doc/relaydesk/copyright
+grep -q 'RelayDesk Proprietary License' /usr/share/doc/relaydesk/copyright
+grep -q 'Copyright 2009 The Go Authors.' /usr/share/doc/relaydesk/copyright
+relaydesk license | grep -q 'RelayDesk Proprietary License'
 for tool in xdotool import xclip xdg-open; do command -v "$tool" >/dev/null; done
 desktop-file-validate /usr/share/applications/relaydesk.desktop
 test -s /usr/share/icons/hicolor/scalable/apps/relaydesk.svg
@@ -27,7 +31,7 @@ test -x /usr/share/relaydesk/autostart-linux.sh
 test -x /usr/share/relaydesk/uninstall-linux.sh
 dpkg-query -W -f='${Status}\n' relaydesk | grep -qx 'install ok installed'
 apt-get remove -y relaydesk
-for file in /usr/bin/relaydesk /usr/share/applications/relaydesk.desktop /usr/share/icons/hicolor/scalable/apps/relaydesk.svg /usr/share/relaydesk/autostart-linux.sh /usr/share/relaydesk/uninstall-linux.sh; do
+for file in /usr/share/doc/relaydesk/copyright /usr/bin/relaydesk /usr/share/applications/relaydesk.desktop /usr/share/icons/hicolor/scalable/apps/relaydesk.svg /usr/share/relaydesk/autostart-linux.sh /usr/share/relaydesk/uninstall-linux.sh; do
  test ! -e "$file"
 done
 echo 'PASS: Debian apt dependency resolution, package installation, desktop metadata and removal.'

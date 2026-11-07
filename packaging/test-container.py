@@ -48,6 +48,15 @@ def main():
     assert json.loads(docker("image", "inspect", args.image,
                               capture_output=True).stdout)[0]["Config"]["User"] == "10001:10001"
 
+    # Verify notices as the image's ordinary runtime user, not root. COPY must
+    # not preserve a restrictive developer umask on these public legal files.
+    for notice in ("LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"):
+        packaged = docker("run", "--rm", "--read-only", "--cap-drop=ALL",
+                          "--security-opt=no-new-privileges:true", "--entrypoint", "cat",
+                          args.image, "/usr/share/doc/relaydesk/" + notice,
+                          capture_output=True).stdout
+        assert packaged == (root / notice).read_text(), notice
+
     base = ""
 
     def request(path, data=None, auth=None, expected=200):

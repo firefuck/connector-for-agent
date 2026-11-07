@@ -7,7 +7,6 @@ import (
 	"errors"
 	"io"
 	"sync"
-	"time"
 )
 
 // RunMCPBridge allows cancellation and ping to be read while tools/call waits for
@@ -25,7 +24,7 @@ func RunMCPBridge(ctx context.Context, c *Client, input io.Reader, output io.Wri
 	var pendingMu sync.Mutex
 	enc := json.NewEncoder(output)
 	pending := map[string]context.CancelFunc{}
-	notifications := make(chan struct{}, 16)
+	notifications := make(chan struct{}, maxBridgeNotifications)
 	bridgeErrors := make(chan error, 1)
 	abort := func(err error) {
 		select {
@@ -73,7 +72,7 @@ func RunMCPBridge(ctx context.Context, c *Client, input io.Reader, output io.Wri
 	scanDone := make(chan error, 1)
 	go func() {
 		scanner := bufio.NewScanner(input)
-		scanner.Buffer(make([]byte, 65536), 12<<20)
+		scanner.Buffer(make([]byte, 65536), maxMessageBytes)
 		for scanner.Scan() {
 			b := append([]byte(nil), scanner.Bytes()...)
 			select {
@@ -126,7 +125,7 @@ func RunMCPBridge(ctx context.Context, c *Client, input io.Reader, output io.Wri
 				go func() {
 					defer workers.Done()
 					defer func() { <-notifications }()
-					notify, cancel := context.WithTimeout(ctx, 10*time.Second)
+					notify, cancel := context.WithTimeout(ctx, bridgeNotificationTimeout)
 					defer cancel()
 					if err := c.Post(notify, "/mcp", json.RawMessage(body), nil); err != nil && ctx.Err() == nil {
 						abort(err)
@@ -141,7 +140,7 @@ func RunMCPBridge(ctx context.Context, c *Client, input io.Reader, output io.Wri
 			}
 			work, cancel := context.WithCancel(ctx)
 			pendingMu.Lock()
-			if len(pending) >= 32 || pending[key] != nil {
+			if len(pending) >= maxBridgeRequests || pending[key] != nil {
 				pendingMu.Unlock()
 				cancel()
 				errReply(req.ID, "bridge busy or duplicate request ID")

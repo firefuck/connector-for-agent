@@ -6,6 +6,8 @@ RelayDesk menghubungkan agent AI yang sudah lo punya ke PC Windows/Linux melalui
 
 > **Status 0.1: masih tahap pengembangan.** Dashboard web sudah tersedia, tetapi aplikasi connector PC masih wizard console. **Kontrol GUI GNOME Wayland belum tersedia**; shell dan file tetap bisa digunakan. Backend Windows sudah dibuat dan binary berhasil dibangun, tetapi belum diuji langsung pada Windows Server/10/11. Baca [status verifikasi](docs/STATUS.md) sebelum menggunakan pada desktop penting.
 
+**Lisensi proprietary:** publikasi source tidak memberi izin umum untuk memakai, memodifikasi, menjual, mendistribusikan ulang atau melakukan rebrand. Penggunaan di luar hak yang sudah berlaku memerlukan izin tertulis pemegang hak cipta. Lihat [LICENSE](LICENSE), [NOTICE](NOTICE), [komponen pihak ketiga](THIRD_PARTY_NOTICES.md), dan [batas perlindungan merek](docs/BRAND_PROTECTION.md). Panduan build/instalasi berikut ditujukan kepada pemilik dan pengguna yang mendapat izin.
+
 ## Daftar isi
 
 - [Tampilan dashboard](#tampilan-dashboard)
@@ -101,6 +103,12 @@ Folder `dist/` merupakan **hasil build lokal dan tidak disimpan di Git**. Setela
 | `dist/relaydesk-linux-amd64` | Binary Linux: gateway, connector, admin CLI, MCP bridge |
 | `dist/relaydesk.exe` | Binary Windows x64: wizard console dan CLI |
 | `dist/relaydesk_0.1.0_amd64.deb` | Paket Debian/Ubuntu amd64 beserta integrasi desktop |
+| `dist/LICENSE`, `dist/NOTICE`, `dist/THIRD_PARTY_NOTICES.md` | Pemberitahuan yang harus menyertai binary portable |
+| `dist/SHA256SUMS` | Checksum hasil build; bukan tanda tangan digital |
+
+Verifikasi file hasil build dari direktori `dist` dengan `sha256sum -c SHA256SUMS`. Manifest ini tidak ditandatangani; ia mendeteksi perubahan file relatif terhadap manifest, bukan membuktikan siapa penerbitnya. Jangan mempercayai manifest dari sumber yang tidak dipercaya.
+
+Periksa lisensi yang tertanam di binary dengan `./dist/relaydesk-linux-amd64 license`. Build gagal bila pemeriksaan konsistensi branding/notices/paket gagal.
 
 Jika hanya membutuhkan binary Linux, tanpa DEB:
 
@@ -208,7 +216,7 @@ Salin `dist/relaydesk.exe` ke PC tujuan, lalu:
 3. Jika URL HTTP, konfirmasikan hanya jika benar memakai jaringan WireGuard terpercaya.
 4. Biarkan window connector terbuka. Perangkat akan muncul Online setelah polling berhasil.
 
-Untuk memasang di `%LocalAppData%\RelayDesk` dan autostart setelah login, salin juga folder `packaging/` dengan posisi relatif yang sama terhadap `dist/`:
+Untuk memasang di `%LocalAppData%\RelayDesk` dan autostart setelah login, salin juga folder `packaging/` dengan posisi relatif yang sama terhadap `dist/`. Sertakan `LICENSE`, `NOTICE`, dan `THIRD_PARTY_NOTICES.md` di `dist/` bersama EXE; installer memeriksanya sebelum memasang:
 
 ```powershell
 powershell -NoProfile -File .\packaging\install-windows.ps1 -Persistent
@@ -502,7 +510,7 @@ Jika revoke melaporkan kegagalan menyimpan state, akses dicabut di memori tetapi
 Perintah berikut untuk pengembang, dari root repository. Dependency browser/SDK hanya diperlukan untuk tes; runtime RelayDesk memakai Go standard library dan utility OS backend.
 
 ```sh
-gofmt -w cmd internal
+gofmt -w identity.go cmd internal
 go test -race ./...
 go vet ./...
 sh packaging/build.sh
@@ -554,6 +562,8 @@ Prioritas berikutnya: GNOME Wayland pada desktop aktif → Pause/Stop lokal, hot
 
 | Path | Isi |
 | --- | --- |
+| `identity.go` | Nama/versi produk serta lisensi dan notice yang di-embed; bukan konfigurasi deployment |
+| `internal/core/limits.go` | Batas resource/protokol bersama gateway, connector dan bridge |
 | `cmd/relaydesk/` | CLI, wizard dan lifecycle proses |
 | `internal/core/` | Gateway, auth/izin, MCP, connector, execution dan backend OS |
 | `internal/core/web/` | HTML/CSS/JS dashboard yang di-embed ke binary; tanpa build frontend terpisah |

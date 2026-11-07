@@ -2,6 +2,38 @@
 
 Diperbarui 2026-11-07. Hasil uji awal berasal dari 2026-11-06; audit GUI/keamanan dan regresi tambahan dijalankan 2026-11-07. Source dilanjutkan dari handoff, bukan implementasi ulang. Ini belum rilis produksi dan belum memenuhi seluruh backlog.
 
+## Refactor dan identitas distribusi 2026-11-07
+
+Gateway dipecah menjadi model, auth, routing HTTP, handler admin/connector dan
+dispatch. Batas resource/protokol disatukan di `limits.go`; revoke, perubahan
+policy, release dan shutdown memakai satu helper pembatalan. Regresi dua sesi
+memastikan pembatalan target tidak membatalkan agent/perangkat lain, late result
+ditolak, dan job yang dibatalkan tidak direplay.
+
+Identitas CLI/dashboard/health/MCP memakai `identity.go`. Lisensi proprietary,
+NOTICE dan notice Go ditambahkan; `relaydesk license` membaca teks tertanam.
+DEB, portable dist dan Docker menyertakan notice. Build memeriksa konsistensi
+identitas/paket lalu membuat SHA256SUMS. Installer Windows disesuaikan untuk
+notice melalui review source, belum pengujian Windows asli.
+
+Race suite + Xvfb/Tk, vet, build Linux/Windows/DEB, browser Chromium, SDK MCP
+HTTP/stdio, checksum, install/remove dpkg terisolasi dan apt lengkap di container
+Debian lulus. Tes dpkg awal menemukan konfigurasi host mengecualikan dokumentasi;
+tes mengikutsertakan docs secara eksplisit, dan file `copyright` Debian kini
+menggabungkan seluruh notice termasuk Go.
+
+Docker rebuild/runtime serta pembacaan notice sebagai user non-root lulus.
+Pemeriksaan tambahan menemukan mode source yang terlalu ketat ikut terbawa COPY;
+Dockerfile kini menetapkan notice mode 0644 dan direktori 0755; tes membaca
+seluruh notice sebagai user runtime. Build awal
+sempat kehabisan disk; cache build RelayDesk yang tidak dipakai dibersihkan
+sebelum pengujian ulang.
+
+Ini **bukan anti-copy absolut**: repository tetap public, pemeriksaan build dapat
+diubah oleh editor source, dan checksum belum ditandatangani. Tidak ada signing,
+DRM atau verifikasi publisher baru. Lihat [BRAND_PROTECTION.md](BRAND_PROTECTION.md).
+Backlog GNOME Wayland, Pause/Stop, indikator dan doctor tetap belum tersedia.
+
 ## Audit GUI dan keamanan 2026-11-07
 
 Dashboard web kini memakai ringkasan singkat dan slide drawer terpisah untuk Perangkat, Agent, Tambah PC dan Tambah agent. Palet diganti dari navy ke krem/putih hangat dengan aksen terracotta. Pilihan PC lewat checkbox, preset default melihat layar, salin hasil, status koneksi/lease dan penguncian tetap tersedia. Ini bukan native UI connector; fitur desktop dalam backlog di bawah belum berubah.

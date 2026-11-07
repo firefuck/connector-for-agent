@@ -18,6 +18,23 @@ Per-tool policy (dashboard/CLI dan enforcement + discovery), cancellation HTTP/M
 
 Tes resmi SDK Python MCP lulus untuk HTTP dan stdio, GUI black-box lulus pada Xvfb + Tk, Docker gateway lulus (termasuk shutdown dengan job delivered), dan apt install/remove DEB dengan dependensi nyata lulus dalam container Debian sementara. Lihat STATUS.md dan test-results.txt untuk batas dan reproduksi. Tes ini tidak menghubungkan agent user/Hermes atau desktop Windows.
 
+## Refactor dan lisensi 2026-11-07
+
+Permintaan terbaru user: hardcode identitas, refactor dan mencegah penjiplakan/
+rebrand. Sudah dijelaskan tidak ada jaminan teknis absolut untuk source public;
+user meminta lanjut dengan asumsi lisensi proprietary. LICENSE/NOTICE dan
+THIRD_PARTY_NOTICES.md ditambahkan; jangan mengklaim trademark terdaftar, code
+signing atau repo private. Lihat docs/BRAND_PROTECTION.md. IP/token tidak dihardcode.
+
+`identity.go` menjadi sumber nama/versi; CLI `license` membaca teks legal embed.
+Dashboard HTML memakai html/template untuk identitas. Gateway dipisah ke
+models/auth/http/admin/connector_handler/dispatch; batas resource di limits.go.
+`cancelSessionsLocked` dipakai revoke/policy/release/shutdown, dengan regresi
+isolasi dua sesi. Paket menyertakan notice; build menjalankan check-branding.sh
+dan membuat SHA256SUMS tanpa signature. DEB copyright menggabungkan notice asli
++ Go supaya tetap tersedia pada image yang mengecualikan docs lainnya.
+Windows script menyalin notice dari dist; belum diuji Windows asli.
+
 ## Kerjakan berikutnya, jangan mengklaim sudah selesai
 
 Audit 2026-11-07 sudah memperbaiki dashboard dan keamanan source; baca [SECURITY_REVIEW.md](SECURITY_REVIEW.md). Dashboard sekarang memakai embedded HTML/JS/CSS di `internal/core/web`, CSP tanpa inline script, pilihan PC/preset dan default view; create agent API wajib `tools` eksplisit, kompatibilitas policy legacy hanya untuk state yang sudah ada. Response gateway disnapshot saat lock lalu dikirim setelah unlock. Penyimpanan file privat, validasi body/result dan pembatasan file tools memiliki tes regresi. Chromium, race suite+Xvfb, SDK MCP dan build lulus; govulncheck Linux/Windows tidak menemukan kerentanan terlapor. Native connector GUI dan GNOME Wayland tetap belum dibuat. Jangan menganggap audit Go sebagai scan CVE seluruh image OS.

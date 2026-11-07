@@ -2,13 +2,15 @@
 # digests together after running packaging/test-container.py.
 FROM golang:1.26.10-alpine3.24@sha256:87c65a688975c0b1d4585d204874c45ca78354670e3a5f11368c5a492303d696 AS build
 WORKDIR /src
-COPY go.mod ./
+COPY go.mod identity.go LICENSE NOTICE ./
 COPY cmd ./cmd
 COPY internal ./internal
 RUN CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags='-s -w' -o /relaydesk ./cmd/relaydesk
 FROM alpine:3.24.4@sha256:3f4d6b32e26703c6082839234f43769d5046b3ac7c910033911d1e71d8cd630a
 RUN addgroup -g 10001 relaydesk && adduser -D -u 10001 -G relaydesk relaydesk && mkdir /data && chown relaydesk:relaydesk /data
 COPY --from=build /relaydesk /usr/local/bin/relaydesk
+COPY --chmod=0644 LICENSE NOTICE THIRD_PARTY_NOTICES.md /usr/share/doc/relaydesk/
+RUN chmod 755 /usr/share/doc /usr/share/doc/relaydesk
 USER 10001:10001
 EXPOSE 8787
 VOLUME /data

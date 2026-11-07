@@ -55,7 +55,7 @@ func desktop(ctx context.Context, action string, a map[string]any) (any, error) 
 	c := ps(ctx, s)
 	if action == "desktop_screenshot" {
 		var out capped
-		out.max = 12 << 20
+		out.max = maxMessageBytes
 		c.Stdout = &out
 		var stderr capped
 		stderr.max = 16384

@@ -67,7 +67,7 @@ func desktop(ctx context.Context, action string, a map[string]any) (any, error) 
 	case "desktop_screenshot":
 		c := exec.CommandContext(ctx, "import", "-window", "root", "png:-")
 		var b capped
-		b.max = 8 << 20
+		b.max = maxScreenshotBytes
 		c.Stdout = &b
 		configureProcess(c)
 		if e := c.Run(); e != nil {

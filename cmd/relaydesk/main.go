@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"relaydesk"
 	"relaydesk/internal/core"
 	"strings"
 	"syscall"
@@ -29,10 +30,13 @@ func mainRun() error {
 	}
 	switch os.Args[1] {
 	case "version":
-		fmt.Println("RelayDesk 0.1.0")
+		fmt.Println(relaydesk.Name, relaydesk.Version)
+		return nil
+	case "license":
+		fmt.Print(relaydesk.NoticeText(), relaydesk.LicenseText())
 		return nil
 	case "help", "--help", "-h":
-		fmt.Println("RelayDesk: gateway | pair | connector | admin | mcp | token | version\nRun a command with --help for flags. No arguments starts the pairing wizard.")
+		fmt.Println(relaydesk.Name + ": gateway | pair | connector | admin | mcp | token | version | license\nRun a command with --help for flags. No arguments starts the pairing wizard.")
 		return nil
 	case "token":
 		fmt.Println(core.Secret())
@@ -78,7 +82,7 @@ func mainRun() error {
 				_ = s.Close()
 			}
 		}()
-		fmt.Fprintln(os.Stderr, "RelayDesk gateway listening on", *listen)
+		fmt.Fprintln(os.Stderr, relaydesk.Name+" gateway listening on", *listen)
 		if *cert != "" {
 			e = s.ListenAndServeTLS(*cert, *key)
 		} else {
@@ -169,7 +173,7 @@ func mainRun() error {
 func wizard() error {
 	reader := bufio.NewReader(os.Stdin)
 	ask := func(q string) string { fmt.Print(q); s, _ := reader.ReadString('\n'); return strings.TrimSpace(s) }
-	fmt.Println("RelayDesk connector 0.1\nWindows / Linux X11. Close this window or Ctrl+C to disconnect.")
+	fmt.Printf("%s connector %s\nWindows / Linux X11. Close this window or Ctrl+C to disconnect.\n", relaydesk.Name, relaydesk.Version)
 	path := core.DefaultConfig()
 	if _, e := os.Stat(path); os.IsNotExist(e) {
 		u := ask("Gateway URL: ")

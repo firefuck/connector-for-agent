@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"relaydesk"
 )
 
 func Tools() []map[string]any {
@@ -118,7 +119,7 @@ func (g *Gateway) mcp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req RPC
-	r.Body = http.MaxBytesReader(w, r.Body, 12<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, maxMessageBytes)
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&req); err != nil {
 		code := -32700
@@ -163,7 +164,7 @@ func (g *Gateway) mcp(w http.ResponseWriter, r *http.Request) {
 	if g.mcpRequests == nil {
 		g.mcpRequests = map[string]context.CancelFunc{}
 	}
-	if g.closed || len(g.mcpRequests) >= 256 || g.mcpRequests[trackedID] != nil {
+	if g.closed || len(g.mcpRequests) >= maxMCPRequests || g.mcpRequests[trackedID] != nil {
 		g.mu.Unlock()
 		rpcError(w, 200, req.ID, -32000, "gateway busy, shutting down or duplicate request ID")
 		return
@@ -174,7 +175,7 @@ func (g *Gateway) mcp(w http.ResponseWriter, r *http.Request) {
 	var result any
 	switch req.Method {
 	case "initialize":
-		result = map[string]any{"protocolVersion": MCPVersion, "capabilities": map[string]any{"tools": map[string]any{}}, "serverInfo": map[string]string{"name": "relaydesk", "version": "0.1.0"}, "instructions": "Use devices_list, then session_acquire. Release after task. Inspect screenshots; do not assume GUI actions succeeded. Only Windows interactive sessions and Linux X11 desktop automation are supported. Tool permissions may change; denied cached tools remain denied. Cancellation stops pending work, but cannot undo completed effects."}
+		result = map[string]any{"protocolVersion": MCPVersion, "capabilities": map[string]any{"tools": map[string]any{}}, "serverInfo": map[string]string{"name": relaydesk.ID, "version": relaydesk.Version}, "instructions": "Use devices_list, then session_acquire. Release after task. Inspect screenshots; do not assume GUI actions succeeded. Only Windows interactive sessions and Linux X11 desktop automation are supported. Tool permissions may change; denied cached tools remain denied. Cancellation stops pending work, but cannot undo completed effects."}
 	case "ping":
 		result = map[string]any{}
 	case "tools/list":

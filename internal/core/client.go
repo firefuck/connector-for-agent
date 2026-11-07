@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"relaydesk"
 	"runtime"
 	"strings"
 	"time"
@@ -48,11 +49,11 @@ func (c *Client) Post(ctx context.Context, path string, in, out any) error {
 		return e
 	}
 	defer resp.Body.Close()
-	body, e := io.ReadAll(io.LimitReader(resp.Body, (12<<20)+1))
+	body, e := io.ReadAll(io.LimitReader(resp.Body, maxMessageBytes+1))
 	if e != nil {
 		return e
 	}
-	if len(body) > 12<<20 {
+	if len(body) > maxMessageBytes {
 		return errors.New("gateway response exceeds 12 MiB")
 	}
 	if resp.StatusCode >= 300 {
@@ -95,7 +96,7 @@ func DefaultConfig() string {
 	if e != nil {
 		p = "."
 	}
-	return filepath.Join(p, "relaydesk", "connector.json")
+	return filepath.Join(p, relaydesk.ID, "connector.json")
 }
 func SaveConfig(path string, c Config) error {
 	if e := os.MkdirAll(filepath.Dir(path), 0700); e != nil {

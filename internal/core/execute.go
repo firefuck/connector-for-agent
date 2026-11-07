@@ -37,7 +37,7 @@ func (b *capped) Write(p []byte) (int, error) {
 	return n, nil
 }
 func run(ctx context.Context, c *exec.Cmd) (map[string]any, error) {
-	b := &capped{max: 1 << 20}
+	b := &capped{max: maxShellOutputBytes}
 	c.Stdout = b
 	c.Stderr = b
 	configureProcess(c)
@@ -76,8 +76,8 @@ func Execute(ctx context.Context, c Command) (any, error) {
 			return nil, e
 		}
 		defer f.Close()
-		b, e := io.ReadAll(io.LimitReader(f, (4<<20)+1))
-		if len(b) > 4<<20 {
+		b, e := io.ReadAll(io.LimitReader(f, maxFileBytes+1))
+		if len(b) > maxFileBytes {
 			return nil, errors.New("file exceeds 4 MiB")
 		}
 		return map[string]any{"base64": base64.StdEncoding.EncodeToString(b), "bytes": len(b)}, e
@@ -86,7 +86,7 @@ func Execute(ctx context.Context, c Command) (any, error) {
 		if e != nil {
 			return nil, e
 		}
-		if len(b) > 4<<20 {
+		if len(b) > maxFileBytes {
 			return nil, errors.New("file exceeds 4 MiB")
 		}
 		flags := os.O_CREATE | os.O_WRONLY | os.O_EXCL
@@ -124,7 +124,7 @@ func Execute(ctx context.Context, c Command) (any, error) {
 			return nil, e
 		}
 		defer f.Close()
-		ds, e := f.ReadDir(2000)
+		ds, e := f.ReadDir(maxDirectoryEntries)
 		if e != nil && !errors.Is(e, io.EOF) {
 			return nil, e
 		}

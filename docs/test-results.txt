@@ -96,3 +96,28 @@ PASS go test -race ./... (4.686s), go vet ./..., git diff --check
 PASS packaging/build.sh: Linux amd64, Windows amd64, DEB
 Screenshots captured from the rebuilt local gateway using synthetic demo data.
 This is a web dashboard revision; no native Windows/GNOME GUI test was run.
+
+Refactor and distribution identity — 2026-11-07
+PASS gofmt; go test -race ./... -count=1 with RELAYDESK_X11_TEST=1 (5.879s);
+  includes two-session cancellation isolation for permissions, agent/device
+  revocation and release; cancelled results rejected and no replay.
+PASS go vet ./...
+PASS packaging/build.sh: Linux/Windows amd64, DEB, embedded legal text,
+  distribution notices, DEB identity/version/binary/desktop consistency.
+  First check expected an incorrect desktop label; corrected to the existing
+  "RelayDesk Connector" and reran successfully.
+PASS SHA256SUMS verification for both binaries, DEB and three notice files.
+PASS isolated dpkg install/remove and complete apt install/remove in disposable
+  Debian container, including copyright and CLI license. The host excludes docs
+  by default; isolated test now explicitly includes them. DEB copyright includes
+  both proprietary terms and Go notice. No host package installation performed.
+PASS Chromium desktop/mobile drawer regression; official Python MCP SDK HTTP
+  and stdio integration, including permission filtering and enforcement.
+No native Windows/Wayland test. Proprietary notice is not technical copy
+protection. Public repository unchanged; checksums unsigned; no release signing.
+PASS Docker rebuilt image, Compose policy, gateway lifecycle smoke and exact
+  image legal notices readable by the non-root runtime user. Initial build hit
+  disk exhaustion; removed only identified reclaimable RelayDesk build caches.
+  Additional notice test found restrictive source permissions preserved by COPY;
+  fixed with explicit file mode 0644 and directory mode 0755, then rebuilt
+  and reran the smoke suite.

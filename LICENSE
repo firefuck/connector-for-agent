@@ -1,0 +1,35 @@
+RelayDesk Proprietary License
+Copyright (c) 2026 the RelayDesk copyright holders. All rights reserved.
+
+This notice applies to the original RelayDesk source code, executable code,
+documentation, visual assets and other original project material (the
+"Software"), except components covered by their own licenses.
+
+No general license to use, reproduce, modify, create derivative works from,
+distribute, sublicense, sell, host for third parties, or otherwise commercially
+exploit the Software is granted by publication of this repository. Those acts
+require prior written authorization from the applicable copyright holder,
+except to the extent independently permitted by applicable law, an existing
+written agreement, or the hosting platform's binding terms.
+
+In particular, without that authorization you may not redistribute a modified
+or unmodified copy under another product name; replace or remove RelayDesk
+branding to present the Software as your own product; or remove or falsify
+copyright, attribution, license or origin notices. No license to RelayDesk
+names, logos or other brand identifiers is granted.
+
+Public access to the repository does not make the Software open source.
+Mandatory legal rights, rights already granted by a separate applicable license
+or agreement, and the limited rights required by the repository hosting
+platform's terms are not withdrawn by this notice. This license does not grant
+ownership of third-party components or restrict rights granted by their
+respective licenses. See THIRD_PARTY_NOTICES.md.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE COPYRIGHT HOLDERS
+ARE NOT LIABLE FOR CLAIMS, DAMAGES OR OTHER LIABILITY ARISING FROM THE SOFTWARE
+OR ITS USE.
+
+For permission requests, contact the repository owner through:
+https://github.com/firefuck/connector-for-agent
