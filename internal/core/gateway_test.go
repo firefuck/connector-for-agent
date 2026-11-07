@@ -44,7 +44,7 @@ func pairDevice(t *testing.T, c *Client) (*Client, string) {
 	return dc, d["id"].(string)
 }
 func agentToken(t *testing.T, c *Client, ds []string) string {
-	return post(t, c, "/admin/agent", map[string]any{"name": "agent", "devices": ds})["token"].(string)
+	return post(t, c, "/admin/agent", map[string]any{"name": "agent", "devices": ds, "tools": []string{"*"}})["token"].(string)
 }
 func TestAuthPairingPersistenceAndACL(t *testing.T) {
 	g, admin, root := fixture(t)

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -47,12 +48,34 @@ func (c *Client) Post(ctx context.Context, path string, in, out any) error {
 		return e
 	}
 	defer resp.Body.Close()
-	body, e := io.ReadAll(io.LimitReader(resp.Body, 12<<20))
+	body, e := io.ReadAll(io.LimitReader(resp.Body, (12<<20)+1))
 	if e != nil {
 		return e
 	}
+	if len(body) > 12<<20 {
+		return errors.New("gateway response exceeds 12 MiB")
+	}
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("gateway HTTP %d: %s", resp.StatusCode, body)
+		var details struct {
+			Error string `json:"error"`
+		}
+		message := http.StatusText(resp.StatusCode)
+		if json.Unmarshal(body, &details) == nil && details.Error != "" {
+			message = details.Error
+		}
+		if c.Token != "" {
+			message = strings.ReplaceAll(message, c.Token, "[REDACTED]")
+		}
+		message = strings.Map(func(r rune) rune {
+			if r < 32 || (r >= 127 && r <= 159) {
+				return ' '
+			}
+			return r
+		}, message)
+		if len(message) > 1024 {
+			message = message[:1024] + "…"
+		}
+		return fmt.Errorf("gateway HTTP %d: %s", resp.StatusCode, message)
 	}
 	if out == nil || len(body) == 0 {
 		return nil
@@ -79,7 +102,7 @@ func SaveConfig(path string, c Config) error {
 		return e
 	}
 	b, _ := json.MarshalIndent(c, "", "  ")
-	return os.WriteFile(path, b, 0600)
+	return writePrivateFile(path, b)
 }
 func ReadConfig(path string) (Config, error) {
 	var c Config

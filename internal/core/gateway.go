@@ -1,12 +1,14 @@
 package core
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -29,6 +31,7 @@ type Agent struct {
 	Name    string   `json:"name"`
 	Key     string   `json:"key,omitempty"`
 	Devices []string `json:"devices"`
+	Tools   []string `json:"tools"` // nil is the legacy unrestricted policy; [] denies all.
 	Revoked bool     `json:"revoked"`
 }
 type Pair struct {
@@ -68,6 +71,8 @@ type Gateway struct {
 	jobs        map[string]*job
 	leases      map[string]lease
 	audit       *os.File
+	closed      bool
+	mcpRequests map[string]context.CancelFunc
 }
 
 func Secret() string {
@@ -92,6 +97,25 @@ func NewGateway(path, admin string) (*Gateway, error) {
 	} else if !os.IsNotExist(e) {
 		return nil, e
 	}
+	if g.State.Devices == nil {
+		g.State.Devices = map[string]*Device{}
+	}
+	if g.State.Agents == nil {
+		g.State.Agents = map[string]*Agent{}
+	}
+	if g.State.Pairs == nil {
+		g.State.Pairs = map[string]Pair{}
+	}
+	for id, d := range g.State.Devices {
+		if d == nil || d.ID != id {
+			return nil, errors.New("invalid device in gateway state")
+		}
+	}
+	for id, a := range g.State.Agents {
+		if a == nil || a.ID != id {
+			return nil, errors.New("invalid agent in gateway state")
+		}
+	}
 	if e = os.MkdirAll(filepath.Dir(path), 0700); e != nil {
 		return nil, e
 	}
@@ -103,11 +127,7 @@ func (g *Gateway) save() error {
 	if e != nil {
 		return e
 	}
-	p := g.Path + ".tmp"
-	if e = os.WriteFile(p, b, 0600); e != nil {
-		return e
-	}
-	return os.Rename(p, g.Path)
+	return writePrivateFile(g.Path, b)
 }
 func (g *Gateway) log(event, actor, device, action string) {
 	_ = json.NewEncoder(g.audit).Encode(map[string]any{"time": time.Now().UTC(), "event": event, "actor": actor, "device": device, "action": action})
@@ -122,9 +142,37 @@ func reply(w http.ResponseWriter, status int, v any) {
 func fail(w http.ResponseWriter, status int, msg string) {
 	reply(w, status, map[string]string{"error": msg})
 }
+
+// Snapshot while holding the state lock, but never hold it during socket I/O.
+// A slow reader must not block cancellation, polling or every other device.
+func (g *Gateway) respondLocked(w http.ResponseWriter, fn func() (int, any)) {
+	status, body, err := func() (int, []byte, error) {
+		g.mu.Lock()
+		defer g.mu.Unlock()
+		if g.closed {
+			return 503, []byte(`{"error":"gateway shutting down"}`), nil
+		}
+		status, value := fn()
+		body, err := json.Marshal(value)
+		return status, body, err
+	}()
+	if err != nil {
+		fail(w, 500, "cannot encode response")
+		return
+	}
+	reply(w, status, json.RawMessage(body))
+}
 func decode(w http.ResponseWriter, r *http.Request, v any) bool {
-	r.Body = http.MaxBytesReader(w, r.Body, 12<<20)
-	if json.NewDecoder(r.Body).Decode(v) != nil {
+	limit := int64(64 << 10)
+	if r.URL.Path == "/result" {
+		limit = 12 << 20
+	} else if r.URL.Path == "/pair" {
+		limit = 4 << 10
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
+	dec := json.NewDecoder(r.Body)
+	var extra any
+	if dec.Decode(v) != nil || dec.Decode(&extra) != io.EOF {
 		fail(w, 400, "invalid JSON or body too large")
 		return false
 	}
@@ -173,6 +221,8 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Frame-Options", "DENY")
+	w.Header().Set("Referrer-Policy", "no-referrer")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'")
 	if o := r.Header.Get("Origin"); o != "" {
 		scheme := "http"
 		if r.TLS != nil {
@@ -190,6 +240,16 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/" && r.Method == "GET" {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprint(w, dashboard)
+		return
+	}
+	if r.Method == "GET" && (r.URL.Path == "/dashboard.js" || r.URL.Path == "/dashboard.css") {
+		if r.URL.Path == "/dashboard.js" {
+			w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+			fmt.Fprint(w, dashboardJS)
+		} else {
+			w.Header().Set("Content-Type", "text/css; charset=utf-8")
+			fmt.Fprint(w, dashboardCSS)
+		}
 		return
 	}
 	if r.URL.Path == "/mcp" {
@@ -222,95 +282,129 @@ func (g *Gateway) admin(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Name    string   `json:"name"`
 		Devices []string `json:"devices"`
+		Tools   []string `json:"tools"`
 		ID      string   `json:"id"`
 		Kind    string   `json:"kind"`
 	}
 	if !decode(w, r, &in) {
 		return
 	}
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	switch r.URL.Path {
-	case "/admin/list":
-		ds := []Device{}
-		for _, d := range g.State.Devices {
-			v := *d
-			v.Key = ""
-			ds = append(ds, v)
-		}
-		as := []Agent{}
-		for _, a := range g.State.Agents {
-			v := *a
-			v.Key = ""
-			as = append(as, v)
-		}
-		reply(w, 200, map[string]any{"devices": ds, "agents": as, "leases": g.leases})
-		return
-	case "/admin/pair":
-		code := Secret()
-		g.State.Pairs[Hash(code)] = Pair{in.Name, time.Now().Add(10 * time.Minute)}
-		if e := g.save(); e != nil {
-			delete(g.State.Pairs, Hash(code))
-			fail(w, 500, "cannot save state")
-			return
-		}
-		reply(w, 200, map[string]any{"code": code, "expires_in": 600})
-		return
-	case "/admin/agent":
-		if len(in.Devices) == 0 {
-			fail(w, 400, "devices must contain IDs or explicit *")
-			return
-		}
-		token := Secret()
-		a := &Agent{ID: Secret()[:16], Name: in.Name, Key: Hash(token), Devices: in.Devices}
-		g.State.Agents[a.ID] = a
-		if e := g.save(); e != nil {
-			delete(g.State.Agents, a.ID)
-			fail(w, 500, "cannot save state")
-			return
-		}
-		reply(w, 200, map[string]string{"id": a.ID, "token": token})
-		return
-	case "/admin/revoke":
-		found := false
-		if in.Kind == "device" {
-			if d := g.State.Devices[in.ID]; d != nil {
-				d.Revoked = true
-				found = true
+	g.respondLocked(w, func() (int, any) {
+		switch r.URL.Path {
+		case "/admin/list":
+			ds := []Device{}
+			for _, d := range g.State.Devices {
+				v := *d
+				v.Key = ""
+				ds = append(ds, v)
 			}
-		} else if in.Kind == "agent" {
-			if a := g.State.Agents[in.ID]; a != nil {
-				a.Revoked = true
-				found = true
+			as := []Agent{}
+			for _, a := range g.State.Agents {
+				v := *a
+				v.Key = ""
+				as = append(as, v)
 			}
-		}
-		if !found {
-			fail(w, 404, "unknown identity")
-			return
-		}
-		for id, j := range g.jobs {
-			if (in.Kind == "device" && j.device == in.ID) || (in.Kind == "agent" && j.owner == in.ID) {
-				select {
-				case j.done <- Result{Error: "access revoked"}:
-				default:
+			return 200, map[string]any{"devices": ds, "agents": as, "leases": g.leases}
+		case "/admin/pair":
+			code := Secret()
+			g.State.Pairs[Hash(code)] = Pair{in.Name, time.Now().Add(10 * time.Minute)}
+			if e := g.save(); e != nil {
+				delete(g.State.Pairs, Hash(code))
+				return 500, map[string]string{"error": "cannot save state"}
+			}
+			return 200, map[string]any{"code": code, "expires_in": 600}
+		case "/admin/agent":
+			if len(in.Devices) == 0 {
+				return 400, map[string]string{"error": "devices must contain IDs or explicit *"}
+			}
+			if in.Tools == nil {
+				return 400, map[string]string{"error": "tools must be explicit; use [] to deny all or [\"*\"] to allow all"}
+			}
+			if e := validateToolPolicy(in.Tools); e != nil {
+				return 400, map[string]string{"error": e.Error()}
+			}
+			token := Secret()
+			a := &Agent{ID: Secret()[:16], Name: in.Name, Key: Hash(token), Devices: in.Devices, Tools: in.Tools}
+			g.State.Agents[a.ID] = a
+			if e := g.save(); e != nil {
+				delete(g.State.Agents, a.ID)
+				return 500, map[string]string{"error": "cannot save state"}
+			}
+			g.log("agent_created", "admin", "", a.ID)
+			return 200, map[string]string{"id": a.ID, "token": token}
+		case "/admin/permissions":
+			a := g.State.Agents[in.ID]
+			if a == nil || a.Revoked {
+				return 404, map[string]string{"error": "unknown or revoked agent"}
+			}
+			if in.Tools == nil {
+				return 400, map[string]string{"error": "tools must be an explicit array; use [] to deny all or [\"*\"] to allow all"}
+			}
+			if e := validateToolPolicy(in.Tools); e != nil {
+				return 400, map[string]string{"error": e.Error()}
+			}
+			old := a.Tools
+			a.Tools = in.Tools
+			if e := g.save(); e != nil {
+				a.Tools = old
+				return 500, map[string]string{"error": "cannot save permissions; previous policy retained"}
+			}
+			// Invalidate the entire session so an action accepted under the old
+			// policy cannot remain queued. Connectors observe cancellation via /check.
+			for id, j := range g.jobs {
+				if j.owner == a.ID {
+					select {
+					case j.done <- Result{Error: "agent permissions changed"}:
+					default:
+					}
+					delete(g.jobs, id)
 				}
-				delete(g.jobs, id)
 			}
-		}
-		for id, l := range g.leases {
-			if (in.Kind == "device" && id == in.ID) || (in.Kind == "agent" && l.Owner == in.ID) {
-				delete(g.leases, id)
+			for id, l := range g.leases {
+				if l.Owner == a.ID {
+					delete(g.leases, id)
+				}
 			}
+			g.log("permissions_changed", "admin", "", a.ID)
+			return 200, map[string]bool{"ok": true}
+		case "/admin/revoke":
+			found := false
+			if in.Kind == "device" {
+				if d := g.State.Devices[in.ID]; d != nil {
+					d.Revoked = true
+					found = true
+				}
+			} else if in.Kind == "agent" {
+				if a := g.State.Agents[in.ID]; a != nil {
+					a.Revoked = true
+					found = true
+				}
+			}
+			if !found {
+				return 404, map[string]string{"error": "unknown identity"}
+			}
+			for id, j := range g.jobs {
+				if (in.Kind == "device" && j.device == in.ID) || (in.Kind == "agent" && j.owner == in.ID) {
+					select {
+					case j.done <- Result{Error: "access revoked"}:
+					default:
+					}
+					delete(g.jobs, id)
+				}
+			}
+			for id, l := range g.leases {
+				if (in.Kind == "device" && id == in.ID) || (in.Kind == "agent" && l.Owner == in.ID) {
+					delete(g.leases, id)
+				}
+			}
+			if e := g.save(); e != nil {
+				return 500, map[string]string{"error": "revoked in memory; persistence failed"}
+			}
+			g.log("revoke", "admin", in.ID, in.Kind)
+			return 200, map[string]bool{"ok": true}
 		}
-		if e := g.save(); e != nil {
-			fail(w, 500, "revoked in memory; persistence failed")
-			return
-		}
-		g.log("revoke", "admin", in.ID, in.Kind)
-		reply(w, 200, map[string]bool{"ok": true})
-		return
-	}
-	fail(w, 404, "unknown admin operation")
+		return 404, map[string]string{"error": "unknown admin operation"}
+	})
 }
 func (g *Gateway) pair(w http.ResponseWriter, r *http.Request) {
 	var in struct {
@@ -320,32 +414,38 @@ func (g *Gateway) pair(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &in) {
 		return
 	}
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	p, ok := g.State.Pairs[Hash(in.Code)]
-	if !ok || time.Now().After(p.Expires) {
-		fail(w, 403, "invalid or expired pairing code")
-		return
-	}
-	token := Secret()
-	id := Secret()[:16]
-	name := in.Name
-	if name == "" {
-		name = p.Name
-	}
-	d := &Device{ID: id, Name: name, Key: Hash(token)}
-	g.State.Devices[id] = d
-	delete(g.State.Pairs, Hash(in.Code))
-	if e := g.save(); e != nil {
-		delete(g.State.Devices, id)
-		g.State.Pairs[Hash(in.Code)] = p
-		fail(w, 500, "cannot save state")
-		return
-	}
-	g.log("pair", "admin", id, "")
-	reply(w, 200, map[string]string{"id": id, "token": token})
+	g.respondLocked(w, func() (int, any) {
+		p, ok := g.State.Pairs[Hash(in.Code)]
+		if !ok || time.Now().After(p.Expires) {
+			return 403, map[string]string{"error": "invalid or expired pairing code"}
+		}
+		token := Secret()
+		id := Secret()[:16]
+		name := in.Name
+		if name == "" {
+			name = p.Name
+		}
+		d := &Device{ID: id, Name: name, Key: Hash(token)}
+		g.State.Devices[id] = d
+		delete(g.State.Pairs, Hash(in.Code))
+		if e := g.save(); e != nil {
+			delete(g.State.Devices, id)
+			g.State.Pairs[Hash(in.Code)] = p
+			return 500, map[string]string{"error": "cannot save state"}
+		}
+		g.log("pair", "admin", id, "")
+		return 200, map[string]string{"id": id, "token": token}
+	})
 }
 func (g *Gateway) connector(w http.ResponseWriter, r *http.Request) {
+	// Reject unauthenticated uploads before reading or allocating their bodies.
+	g.mu.Lock()
+	authorized := g.device(bearer(r)) != nil
+	g.mu.Unlock()
+	if !authorized {
+		fail(w, 401, "device revoked or unknown")
+		return
+	}
 	var in struct {
 		ID           string   `json:"id"`
 		Platform     string   `json:"platform"`
@@ -355,53 +455,67 @@ func (g *Gateway) connector(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &in) {
 		return
 	}
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	d := g.device(bearer(r))
-	if d == nil {
-		fail(w, 401, "device revoked or unknown")
-		return
-	}
-	d.LastSeen = time.Now()
-	d.Platform = in.Platform
-	d.Capabilities = in.Capabilities
-	if r.URL.Path == "/result" {
-		j := g.jobs[in.ID]
-		if j == nil || j.device != d.ID {
-			fail(w, 409, "job expired or cancelled")
-			return
+	g.respondLocked(w, func() (int, any) {
+		d := g.device(bearer(r))
+		if d == nil {
+			return 401, map[string]string{"error": "device revoked or unknown"}
 		}
-		select {
-		case j.done <- in.Result:
-		default:
+		d.LastSeen = time.Now()
+		d.Platform = in.Platform
+		d.Capabilities = in.Capabilities
+		if r.URL.Path == "/result" {
+			j := g.jobs[in.ID]
+			if j == nil || j.device != d.ID || !j.delivered || !time.Now().Before(j.Deadline) {
+				return 409, map[string]string{"error": "job expired or cancelled"}
+			}
+			select {
+			case j.done <- in.Result:
+			default:
+			}
+			return 200, map[string]bool{"ok": true}
 		}
-		reply(w, 200, map[string]bool{"ok": true})
-		return
-	}
-	if r.URL.Path == "/check" {
-		j := g.jobs[in.ID]
-		active := j != nil && j.device == d.ID && time.Now().Before(j.Deadline)
-		reply(w, 200, map[string]bool{"active": active})
-		return
-	}
-	for _, j := range g.jobs {
-		if j.device == d.ID && !j.delivered && time.Now().Before(j.Deadline) {
-			j.delivered = true
-			reply(w, 200, j.Command)
-			return
+		if r.URL.Path == "/check" {
+			j := g.jobs[in.ID]
+			active := j != nil && j.device == d.ID && time.Now().Before(j.Deadline)
+			return 200, map[string]bool{"active": active}
 		}
-	}
-	reply(w, 200, map[string]any{"idle": true})
+		for _, j := range g.jobs {
+			if j.device == d.ID && !j.delivered && time.Now().Before(j.Deadline) {
+				j.delivered = true
+				return 200, j.Command
+			}
+		}
+		return 200, map[string]any{"idle": true}
+	})
 }
 func (g *Gateway) Call(key, name string, args map[string]any) (any, error) {
+	return g.CallContext(context.Background(), key, name, args)
+}
+
+func (g *Gateway) CallContext(ctx context.Context, key, name string, args map[string]any) (any, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if err := validateTool(name, args); err != nil {
 		return nil, err
 	}
 	g.mu.Lock()
+	if err := ctx.Err(); err != nil {
+		g.mu.Unlock()
+		return nil, err
+	}
+	if g.closed {
+		g.mu.Unlock()
+		return nil, errors.New("gateway shutting down")
+	}
 	a := g.agent(key)
 	if a == nil {
 		g.mu.Unlock()
 		return nil, errors.New("unauthorized agent")
+	}
+	if !toolAllowed(a, name) {
+		g.mu.Unlock()
+		return nil, errors.New("tool forbidden by agent policy")
 	}
 	owner := a.ID
 	id, _ := args["device_id"].(string)
@@ -493,6 +607,8 @@ func (g *Gateway) Call(key, name string, args map[string]any) (any, error) {
 	var result Result
 	select {
 	case result = <-j.done:
+	case <-ctx.Done():
+		result.Error = "request cancelled; verify state before retrying"
 	case <-timer.C:
 		result.Error = "deadline exceeded; verify state before retrying"
 	}

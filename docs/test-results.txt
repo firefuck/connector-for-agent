@@ -1,18 +1,98 @@
+RelayDesk verification — 2026-11-06
+Native Go 1.27.3; Docker Go 1.26.10 / Alpine 3.24.4
+No Context.dev, deployment, real credentials, or remote user systems used.
+
+PASS gofmt -l cmd internal (no output)
+PASS go vet ./... (exit 0)
+PASS go test -race ./...
 ?   	relaydesk/cmd/relaydesk	[no test files]
-=== RUN   TestAuthPairingPersistenceAndACL
---- PASS: TestAuthPairingPersistenceAndACL (0.01s)
-=== RUN   TestEndToEndConnectorAndMCP
-Running files_write job cf8a2f1f468730e6d09f142f
-Running system_exec job adafea91fd1a7e6be9d73483
-Running files_read job 2e616432808ce8b3945f8224
---- PASS: TestEndToEndConnectorAndMCP (3.03s)
-=== RUN   TestRevocationCancelsInFlight
---- PASS: TestRevocationCancelsInFlight (0.01s)
-=== RUN   TestRejectInsecureURL
---- PASS: TestRejectInsecureURL (0.00s)
-=== RUN   TestTimeoutKillsProcess
---- PASS: TestTimeoutKillsProcess (0.10s)
-=== RUN   TestToolInputValidation
---- PASS: TestToolInputValidation (0.00s)
+ok  	relaydesk/internal/core	4.224s
+
+PASS packaging/build.sh (Linux static ELF, Windows PE32+, DEB amd64)
+PASS packaging/test-install-linux.sh (isolated dpkg database; dependencies bypassed here)
+
+Official SDK: /workspace/scratch/mcp-sdk/bin/python integration/test_mcp_sdk.py
+Official MCP Python SDK 1.30.0; jsonschema 4.26.0
+PASS http: initialize, ping, 15 valid tool schemas, discovery, lease, Unicode files, exec, release
+PASS http: restricted tool discovery and server-side denial
+PASS stdio: initialize, ping, 15 valid tool schemas, discovery, lease, Unicode files, exec, release
+PASS stdio: restricted tool discovery and server-side denial
+PASS temporary gateway/connector cleanup; no user agents or remote PCs contacted
+
+GUI: isolated Xvfb, local extracted dependencies in this environment.
+Reproduce on installed distro: RELAYDESK_X11_TEST=1 go test -race ./internal/core -run "^TestLinux" -count=1 -v
+=== RUN   TestLinuxGUIRefusesWaylandAndMissingSession
+--- PASS: TestLinuxGUIRefusesWaylandAndMissingSession (0.00s)
+=== RUN   TestLinuxDesktopBackendFailure
+--- PASS: TestLinuxDesktopBackendFailure (0.00s)
+=== RUN   TestLinuxX11BlackBox
+    platform_linux_test.go:116: desktop_screenshot completed in 81.897121ms
+    platform_linux_test.go:125: desktop_move completed in 4.552849ms
+    platform_linux_test.go:130: desktop_click completed in 103.795391ms
+    platform_linux_test.go:133: desktop_type completed in 381.63483ms
+    platform_linux_test.go:135: desktop_key completed in 28.277795ms
+    platform_linux_test.go:137: desktop_key completed in 18.786758ms
+    platform_linux_test.go:138: desktop_scroll completed in 204.162538ms
+--- PASS: TestLinuxX11BlackBox (1.17s)
 PASS
-ok  	relaydesk/internal/core	4.161s
+ok  	relaydesk/internal/core	2.201s
+
+Docker: python3 packaging/test-container.py
+#15 DONE 0.1s
+PASS: container build, Compose policy, health, non-root/read-only, auth, pairing,
+      hashed state, restart persistence, revocation and clean SIGTERM with pending MCP
+
+Full apt dependencies: sh packaging/test-deb-container.sh
+PASS: Debian apt dependency resolution, package installation, desktop metadata and removal.
+No GUI login, input or screenshot was exercised by this container test.
+
+Not tested: Windows execution/installer/GUI; physical desktop, multimonitor, default browser, VS Code; actual Hermes/user-agent configuration; Wayland.
+Compose config validated; runtime test used docker run with equivalent restrictions.
+Docker base tags/digests reviewed, no image vulnerability scan. See STATUS.md for remaining implementation backlog.
+
+Additional GUI/security review — 2026-11-07
+See docs/SECURITY_REVIEW.md for findings, changes, compatibility and limitations.
+PASS gofmt -l cmd internal (no output), go vet ./..., git diff --check
+PASS go test -race ./...; final opt-in run included X11 Xvfb/Tk
+  RELAYDESK_X11_TEST=1 go test -race ./... -count=1
+  ok relaydesk/internal/core 5.874s
+  Initial opt-in attempt: Xvfb missing from default PATH.
+  Rerun used /workspace/scratch/relaydesk-x11-deps/root/usr/bin,
+  its usr/lib/x86_64-linux-gnu via LD_LIBRARY_PATH, and /usr/bin/python3.
+PASS new regressions: authentication before connector body reads; JSON EOF/body
+  limits; explicit create policy and legacy state; blocked response writer does
+  not block other requests; delivered/owned/live results; private config replace,
+  symlink targets, failed-rename cleanup; null state; origin/CSP/no token hashes in
+  listing; bounded/redacted client errors; response overflow; regular files,
+  overwrite, bounded directory enumeration, FIFO rejection without hang.
+PASS packaging/build.sh: Linux ELF, Windows PE and DEB
+PASS packaging/test-install-linux.sh: isolated dpkg install/remove, metadata,
+  paired autostart and cleanup (dependencies bypassed; no GUI login)
+PASS node integration/test_dashboard.cjs (Chromium + Playwright): login,
+  pairing, literal XSS payload, default permissions, device selection, duplicate
+  submit, policy/revoke, 390px mobile layout, no browser token storage, lock while
+  request pending. No page errors. Screenshot visually inspected.
+PASS official MCP Python SDK 1.30.0 / jsonschema 4.26.0: HTTP and stdio,
+  initialize/ping/15 schemas, discovery, lease, Unicode files, exec, release,
+  restricted discovery and denied tool calls; temporary resource cleanup.
+PASS Docker rebuilt image and smoke: Compose policy, health, non-root/read-only,
+  auth, pairing, hashed state, restart persistence, revoke and pending-job SIGTERM.
+  Initial rebuild: disk full. Removed only reclaimable RelayDesk build caches,
+  then reran Docker and affected SDK/scan checks successfully.
+PASS govulncheck v1.9.0, source Linux and GOOS=windows GOARCH=amd64,
+  Go 1.27.3: No vulnerabilities found.
+PASS govulncheck -mode=binary on Go 1.26.10 executable extracted from newly built
+  relaydesk-container-test image: No vulnerabilities found.
+No full OS-image CVE scan; no native Windows/GNOME runtime or real agent testing.
+
+Drawer UI revision — 2026-11-07
+PASS node integration/test_dashboard.cjs: existing login/pairing/policy/revoke/XSS
+  and lock regressions plus one-panel navigation, draft preservation, Tab focus
+  trap, Escape/backdrop close, focus restore, pending mutation close prevention,
+  secret clearing, reduced motion, desktop and 390px/320px layouts.
+  Initial focus test found native Tab traversal could escape the modal. Added
+  explicit Tab/Shift+Tab loop and reran successfully.
+PASS go test -race ./... (4.686s), go vet ./..., git diff --check
+PASS packaging/build.sh: Linux amd64, Windows amd64, DEB
+Screenshots captured from the rebuilt local gateway using synthetic demo data.
+This is a web dashboard revision; no native Windows/GNOME GUI test was run.

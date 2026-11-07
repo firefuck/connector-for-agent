@@ -1,6 +1,8 @@
 dist
 build
 .git
-.env
+.env*
+!.env.example
 data
 *.zip
+**/__pycache__

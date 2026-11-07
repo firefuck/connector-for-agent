@@ -3,3 +3,5 @@ data/
 build/
 dist/
 *.log
+.venv*/
+__pycache__/

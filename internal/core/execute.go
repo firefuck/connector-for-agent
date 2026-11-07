@@ -71,7 +71,7 @@ func Execute(ctx context.Context, c Command) (any, error) {
 		cmd.Dir = value(a, "cwd")
 		return run(ctx, cmd)
 	case "files_read":
-		f, e := os.Open(value(a, "path"))
+		f, e := openRegularFile(value(a, "path"), os.O_RDONLY)
 		if e != nil {
 			return nil, e
 		}
@@ -91,10 +91,17 @@ func Execute(ctx context.Context, c Command) (any, error) {
 		}
 		flags := os.O_CREATE | os.O_WRONLY | os.O_EXCL
 		if overwrite, _ := a["overwrite"].(bool); overwrite {
-			flags = os.O_CREATE | os.O_WRONLY | os.O_TRUNC
+			flags = os.O_CREATE | os.O_WRONLY
 		}
-		f, e := os.OpenFile(value(a, "path"), flags, 0600)
+		f, e := openRegularFile(value(a, "path"), flags)
 		if e != nil {
+			return nil, e
+		}
+		defer f.Close()
+		if e = ctx.Err(); e != nil {
+			return nil, e
+		}
+		if e = f.Truncate(0); e != nil {
 			return nil, e
 		}
 		n, e := f.Write(b)
@@ -104,15 +111,25 @@ func Execute(ctx context.Context, c Command) (any, error) {
 		}
 		return map[string]any{"bytes": n}, e
 	case "files_list":
-		ds, e := os.ReadDir(value(a, "path"))
+		path := value(a, "path")
+		info, e := os.Stat(path)
 		if e != nil {
 			return nil, e
 		}
+		if !info.IsDir() {
+			return nil, errors.New("directory required")
+		}
+		f, e := os.OpenFile(path, os.O_RDONLY|nonblockFileFlag, 0)
+		if e != nil {
+			return nil, e
+		}
+		defer f.Close()
+		ds, e := f.ReadDir(2000)
+		if e != nil && !errors.Is(e, io.EOF) {
+			return nil, e
+		}
 		out := []map[string]any{}
-		for i, d := range ds {
-			if i == 2000 {
-				break
-			}
+		for _, d := range ds {
 			out = append(out, map[string]any{"name": d.Name(), "directory": d.IsDir()})
 		}
 		return out, nil
@@ -128,4 +145,30 @@ func Execute(ctx context.Context, c Command) (any, error) {
 		}
 		return nil, fmt.Errorf("unsupported action: %s", c.Action)
 	}
+}
+
+func openRegularFile(path string, flags int) (*os.File, error) {
+	// Preflight also avoids opening named pipes on Windows. Recheck the handle
+	// before reading/truncating; Linux additionally opens nonblocking to close
+	// the FIFO replacement race between stat and open.
+	info, err := os.Stat(path)
+	if err == nil && !info.Mode().IsRegular() {
+		return nil, errors.New("only regular files are supported")
+	}
+	if err != nil && !(os.IsNotExist(err) && flags&os.O_CREATE != 0) {
+		return nil, err
+	}
+	f, err := os.OpenFile(path, flags|nonblockFileFlag, 0600)
+	if err != nil {
+		return nil, err
+	}
+	info, err = f.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		f.Close()
+		if err != nil {
+			return nil, err
+		}
+		return nil, errors.New("only regular files are supported")
+	}
+	return f, nil
 }

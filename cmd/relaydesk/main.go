@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"relaydesk/internal/core"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -49,13 +50,14 @@ func mainRun() error {
 	key := f.String("tls-key", "", "TLS private key PEM")
 	duration := f.Duration("duration", 0, "Connector session duration (0 = persistent process)")
 	devices := f.String("devices", "", "Comma-separated device IDs or *")
+	tools := f.String("tools", "*", "Comma-separated tool permissions; * = all, empty = none")
 	id := f.String("id", "", "Identity to revoke")
 	kind := f.String("kind", "", "device or agent")
-	op := f.String("op", "list", "Admin operation: list, pair, agent, revoke")
+	op := f.String("op", "list", "Admin operation: list, pair, agent, permissions, revoke")
 	if e := f.Parse(os.Args[2:]); e != nil {
 		return e
 	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	switch os.Args[1] {
 	case "gateway":
@@ -63,12 +65,18 @@ func mainRun() error {
 		if e != nil {
 			return e
 		}
+		defer g.Close()
 		s := &http.Server{Addr: *listen, Handler: g, ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 330 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384}
+		shutdownDone := make(chan struct{})
 		go func() {
+			defer close(shutdownDone)
 			<-ctx.Done()
+			_ = g.Close()
 			c, cc := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cc()
-			_ = s.Shutdown(c)
+			if s.Shutdown(c) != nil {
+				_ = s.Close()
+			}
 		}()
 		fmt.Fprintln(os.Stderr, "RelayDesk gateway listening on", *listen)
 		if *cert != "" {
@@ -77,6 +85,7 @@ func mainRun() error {
 			e = s.ListenAndServe()
 		}
 		if errors.Is(e, http.ErrServerClosed) {
+			<-shutdownDone
 			return nil
 		}
 		return e
@@ -120,7 +129,7 @@ func mainRun() error {
 			ctx, cancel = context.WithTimeout(ctx, *duration)
 			defer cancel()
 		}
-		fmt.Fprintln(os.Stderr, "Connector online:", cfg.ID, "— Ctrl+C to disconnect")
+		fmt.Fprintln(os.Stderr, "Connecting device:", cfg.ID, "— Ctrl+C to disconnect")
 		return core.RunConnector(ctx, c)
 	case "admin":
 		c, e := core.NewClient(strings.TrimRight(*gateway, "/"), os.Getenv("RELAYDESK_ADMIN_TOKEN"), *wg)
@@ -133,8 +142,14 @@ func mainRun() error {
 				ds = append(ds, strings.TrimSpace(s))
 			}
 		}
+		ts := []string{}
+		for _, tool := range strings.Split(*tools, ",") {
+			if tool = strings.TrimSpace(tool); tool != "" {
+				ts = append(ts, tool)
+			}
+		}
 		var out any
-		e = c.Post(ctx, "/admin/"+*op, map[string]any{"name": *name, "devices": ds, "id": *id, "kind": *kind}, &out)
+		e = c.Post(ctx, "/admin/"+*op, map[string]any{"name": *name, "devices": ds, "tools": ts, "id": *id, "kind": *kind}, &out)
 		if e != nil {
 			return e
 		}
@@ -146,25 +161,8 @@ func mainRun() error {
 		if e != nil {
 			return e
 		}
-		scanner := bufio.NewScanner(os.Stdin)
-		scanner.Buffer(make([]byte, 65536), 12<<20)
-		enc := json.NewEncoder(os.Stdout)
-		for scanner.Scan() {
-			var req core.RPC
-			if e = json.Unmarshal(scanner.Bytes(), &req); e != nil {
-				return e
-			}
-			var result json.RawMessage
-			e = c.Post(ctx, "/mcp", json.RawMessage(scanner.Bytes()), &result)
-			if len(req.ID) > 0 {
-				if e != nil {
-					_ = enc.Encode(map[string]any{"jsonrpc": "2.0", "id": req.ID, "error": map[string]any{"code": -32000, "message": e.Error()}})
-				} else if len(result) > 0 {
-					fmt.Println(string(result))
-				}
-			}
-		}
-		return scanner.Err()
+		go func() { <-ctx.Done(); _ = os.Stdin.Close(); _ = os.Stdout.Close() }()
+		return core.RunMCPBridge(ctx, c, os.Stdin, os.Stdout)
 	}
 	return errors.New("unknown command; use relaydesk help")
 }
@@ -202,7 +200,7 @@ func wizard() error {
 		return e
 	}
 	fmt.Println("Config:", filepath.Clean(path))
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	return core.RunConnector(ctx, c)
 }

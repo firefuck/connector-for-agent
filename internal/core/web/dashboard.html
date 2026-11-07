@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RelayDesk — perangkat dan agent</title>
+<link rel="stylesheet" href="/dashboard.css"><script src="/dashboard.js" defer></script>
+</head>
+<body>
+<header class="app-header"><a class="brand" href="/" aria-label="RelayDesk beranda"><span class="brand-mark" aria-hidden="true">r.</span>RelayDesk<span class="version">0.1</span></a><span class="badge"><span class="dot" aria-hidden="true"></span> Gateway privat</span></header>
+<section class="login-card" id="login">
+<p class="eyebrow">SELAMAT DATANG</p><h1>Buka ruang kerja.</h1><p>Kelola PC dan akses agent dari satu tempat.</p>
+<form id="login-form"><label for="token">Admin token</label><input id="token" type="password" autocomplete="off" required placeholder="Tempel token gateway"><button type="submit">Masuk dashboard <span aria-hidden="true">›</span></button></form>
+<p class="hint">Token hanya disimpan di memori tab ini.</p>
+</section>
+<div id="page-feedback"><div id="feedback"><p id="error" role="alert" hidden></p><p id="notice" role="status" aria-live="polite"></p></div></div>
+<main hidden id="main" class="app-layout">
+<aside class="sidebar"><p class="eyebrow">RUANG KERJA</p><nav aria-label="Menu utama">
+<button class="nav-home" aria-current="page"><span class="menu-icon" aria-hidden="true">◫</span> Ringkasan</button>
+<button id="menu-devices" data-drawer="devices" aria-haspopup="dialog" aria-controls="drawer"><span class="menu-icon" aria-hidden="true">▣</span> Perangkat <span class="arrow" aria-hidden="true">›</span></button>
+<button id="menu-agents" data-drawer="agents" aria-haspopup="dialog" aria-controls="drawer"><span class="menu-icon" aria-hidden="true">◎</span> Agent <span class="arrow" aria-hidden="true">›</span></button>
+<span class="nav-divider"></span>
+<button id="menu-pair" data-drawer="pair" aria-haspopup="dialog" aria-controls="drawer"><span class="menu-icon" aria-hidden="true">＋</span> Tambah PC <span class="arrow" aria-hidden="true">›</span></button>
+<button id="menu-agent" data-drawer="agent" aria-haspopup="dialog" aria-controls="drawer"><span class="menu-icon" aria-hidden="true">＋</span> Tambah agent <span class="arrow" aria-hidden="true">›</span></button>
+</nav><button id="logout" class="quiet lock-button">Kunci dashboard <span aria-hidden="true">›</span></button></aside>
+<section class="overview" aria-labelledby="overview-title">
+<div class="overview-header"><div><p class="eyebrow">DASHBOARD</p><h1 id="overview-title">Ringkasan</h1><p>Cek koneksi. Lanjutkan pekerjaan.</p></div><button id="refresh" class="secondary">↻ <span>Perbarui</span></button></div>
+<div class="stats"><div class="stat"><span>PC online</span><strong id="online-count">0</strong><small id="device-count">Belum ada perangkat</small></div><div class="stat"><span>Agent aktif</span><strong id="agent-count">0</strong><small>Akses yang belum dicabut</small></div><div class="stat"><span>Sesi kontrol</span><strong id="lease-count">0</strong><small>Lease yang sedang berlaku</small></div></div>
+<section class="surface"><div class="section-title"><h2>Perangkat lo</h2><button class="text-button" data-drawer="devices" aria-haspopup="dialog" aria-controls="drawer">Lihat semua <span aria-hidden="true">›</span></button></div><div id="device-summary"></div></section>
+<div class="overview-footer"><span id="updated">Belum diperbarui</span><span>Refresh otomatis · 5 detik</span></div>
+</section>
+</main>
+<dialog id="drawer" aria-labelledby="drawer-title">
+<div class="drawer-header"><div><p class="eyebrow" id="drawer-kicker">RUANG KERJA</p><h2 id="drawer-title" tabindex="-1">Perangkat</h2></div><button id="drawer-close" class="icon-button" aria-label="Tutup menu">×</button></div>
+<div class="drawer-body"><div id="drawer-feedback"></div>
+<section id="panel-devices" data-panel="devices" hidden><p class="panel-intro">Status koneksi dan akses setiap PC.</p><div id="pcs"></div><button class="secondary" data-drawer="pair">＋ Tambah PC</button></section>
+<section id="panel-agents" data-panel="agents" hidden><p class="panel-intro">Atur siapa yang boleh mengakses PC lo.</p><div id="agents"></div><button class="secondary" data-drawer="agent">＋ Tambah agent</button><p class="hint footnote">Mengubah izin membatalkan sesi agent. Cabut akses menghentikan pekerjaan berikutnya; efek yang sudah terjadi tidak dapat dibatalkan.</p></section>
+<section id="panel-pair" data-panel="pair" hidden><p class="panel-intro">Buat kode, lalu masukkan di RelayDesk pada PC tujuan.</p><form id="pair-form"><label for="pcname">Nama PC</label><input id="pcname" maxlength="120" required placeholder="Misalnya: Laptop kerja"><p class="hint">Nama ini membantu lo memilih PC yang tepat.</p><button type="submit" class="full-width">Buat kode pairing <span aria-hidden="true">→</span></button></form><div class="tip"><strong>Sekali pakai, 10 menit.</strong><p>Buka RelayDesk di PC tujuan. Masukkan alamat gateway dan kode yang muncul setelah ini.</p></div></section>
+<section id="panel-agent" data-panel="agent" hidden><p class="panel-intro">Pilih PC dan izin yang dibutuhkan agent.</p><form id="agent-form"><label for="agentname">Nama agent</label><input id="agentname" maxlength="120" required placeholder="agent-vps atau hermes">
+<fieldset><legend>PC yang boleh diakses</legend><div id="device-options">Hubungkan PC terlebih dahulu.</div><label class="check all-devices"><input id="all-devices" type="checkbox"> Semua PC, termasuk yang ditambahkan nanti</label></fieldset>
+<label for="preset">Izin agent</label><select id="preset"><option value="view">Lihat layar dan info PC</option><option value="desktop">Kontrol desktop dan browser</option><option value="full">Akses penuh, terminal dan file</option><option value="custom">Pilih tool secara manual</option></select>
+<p class="hint" id="policy-hint">Bisa melihat layar; tidak mengirim input atau membaca file lewat tool file.</p><div id="custom-policy" hidden><label for="tools">Nama tool, dipisahkan koma</label><input id="tools" placeholder="devices_list, session_acquire, …"><p class="hint">Kosong menolak semua tool. Tanda * memberi akses penuh.</p></div>
+<button type="submit" class="full-width">Buat akses agent <span aria-hidden="true">→</span></button></form></section>
+<section id="result-card" data-panel="result" hidden tabindex="-1"><h3 id="result-title">Akses baru</h3><p id="result-help"></p><div id="result"></div><div class="tip"><strong>Salin sebelum menutup.</strong><p>Hasil dihapus dari layar saat menu ditutup. Token agent tidak dapat ditampilkan kembali.</p></div><button id="clear-result" class="secondary full-width">Selesai, hapus dari layar</button></section>
+</div><div class="drawer-footer"><span>RelayDesk · gateway privat</span><button id="drawer-lock" class="quiet">Kunci dashboard</button></div>
+</dialog>
+<noscript><p>Aktifkan JavaScript untuk memakai dashboard.</p></noscript>
+</body></html>

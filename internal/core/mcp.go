@@ -1,8 +1,12 @@
 package core
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime"
 	"net/http"
 )
 
@@ -55,11 +59,47 @@ type RPC struct {
 	Params  json.RawMessage `json:"params"`
 }
 
+const MCPVersion = "2025-03-26"
+
+// requestIDKey normalizes numeric and string IDs without allowing null,
+// fractional IDs, or unbounded tracking keys. Types remain distinct.
+func requestIDKey(id json.RawMessage) (string, bool) {
+	var value any
+	dec := json.NewDecoder(bytes.NewReader(id))
+	dec.UseNumber()
+	if dec.Decode(&value) != nil {
+		return "", false
+	}
+	switch v := value.(type) {
+	case string:
+		if len(v) <= 256 {
+			return "s:" + v, true
+		}
+	case json.Number:
+		if _, err := v.Int64(); err == nil {
+			return "n:" + v.String(), true
+		}
+	}
+	return "", false
+}
+
+func rpcError(w http.ResponseWriter, status int, id json.RawMessage, code int, message string) {
+	if len(id) == 0 {
+		id = json.RawMessage("null")
+	}
+	reply(w, status, map[string]any{"jsonrpc": "2.0", "id": id, "error": map[string]any{"code": code, "message": message}})
+}
+
 func (g *Gateway) mcp(w http.ResponseWriter, r *http.Request) {
+	key := bearer(r)
 	g.mu.Lock()
-	ok := g.agent(bearer(r)) != nil
+	agent := g.agent(key)
+	owner := ""
+	if agent != nil {
+		owner = agent.ID
+	}
 	g.mu.Unlock()
-	if !ok {
+	if owner == "" {
 		fail(w, 401, "unauthorized agent")
 		return
 	}
@@ -68,53 +108,104 @@ func (g *Gateway) mcp(w http.ResponseWriter, r *http.Request) {
 		fail(w, 405, "SSE stream not offered")
 		return
 	}
-	var req RPC
-	if !decode(w, r, &req) {
+	if version := r.Header.Get("MCP-Protocol-Version"); version != "" && version != MCPVersion {
+		fail(w, 400, "unsupported MCP protocol version")
 		return
 	}
-	if req.JSONRPC != "2.0" {
-		reply(w, 400, map[string]any{"jsonrpc": "2.0", "id": nil, "error": map[string]any{"code": -32600, "message": "invalid request"}})
+	media, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if media != "application/json" {
+		fail(w, 415, "application/json required")
+		return
+	}
+	var req RPC
+	r.Body = http.MaxBytesReader(w, r.Body, 12<<20)
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(&req); err != nil {
+		code := -32700
+		if _, ok := err.(*json.UnmarshalTypeError); ok {
+			code = -32600
+		}
+		rpcError(w, 400, nil, code, "invalid JSON-RPC request")
+		return
+	}
+	var extra any
+	if dec.Decode(&extra) != io.EOF {
+		rpcError(w, 400, nil, -32700, "expected one JSON-RPC message")
+		return
+	}
+	idKey, validID := requestIDKey(req.ID)
+	if req.JSONRPC != "2.0" || req.Method == "" || (len(req.ID) != 0 && !validID) {
+		rpcError(w, 400, nil, -32600, "invalid request")
 		return
 	}
 	if len(req.ID) == 0 {
+		if req.Method == "notifications/cancelled" {
+			var p struct {
+				RequestID json.RawMessage `json:"requestId"`
+			}
+			if json.Unmarshal(req.Params, &p) == nil {
+				if target, ok := requestIDKey(p.RequestID); ok {
+					g.mu.Lock()
+					if cancel := g.mcpRequests[owner+"/"+target]; cancel != nil {
+						cancel()
+					}
+					g.mu.Unlock()
+				}
+			}
+		}
 		reply(w, 202, nil)
 		return
 	}
-	res := map[string]any{"jsonrpc": "2.0", "id": req.ID}
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+	trackedID := owner + "/" + idKey
+	g.mu.Lock()
+	if g.mcpRequests == nil {
+		g.mcpRequests = map[string]context.CancelFunc{}
+	}
+	if g.closed || len(g.mcpRequests) >= 256 || g.mcpRequests[trackedID] != nil {
+		g.mu.Unlock()
+		rpcError(w, 200, req.ID, -32000, "gateway busy, shutting down or duplicate request ID")
+		return
+	}
+	g.mcpRequests[trackedID] = cancel
+	g.mu.Unlock()
+	defer func() { g.mu.Lock(); delete(g.mcpRequests, trackedID); g.mu.Unlock() }()
 	var result any
 	switch req.Method {
 	case "initialize":
-		result = map[string]any{"protocolVersion": "2025-03-26", "capabilities": map[string]any{"tools": map[string]any{}}, "serverInfo": map[string]string{"name": "relaydesk", "version": "0.1.0"}, "instructions": "Use devices_list, then session_acquire. Release after task. Inspect screenshots; do not assume GUI actions succeeded. Only Windows interactive sessions and Linux X11 desktop automation are supported."}
+		result = map[string]any{"protocolVersion": MCPVersion, "capabilities": map[string]any{"tools": map[string]any{}}, "serverInfo": map[string]string{"name": "relaydesk", "version": "0.1.0"}, "instructions": "Use devices_list, then session_acquire. Release after task. Inspect screenshots; do not assume GUI actions succeeded. Only Windows interactive sessions and Linux X11 desktop automation are supported. Tool permissions may change; denied cached tools remain denied. Cancellation stops pending work, but cannot undo completed effects."}
 	case "ping":
 		result = map[string]any{}
 	case "tools/list":
-		result = map[string]any{"tools": Tools()}
+		result = map[string]any{"tools": g.ToolsForAgent(key)}
 	case "tools/call":
 		var p struct {
 			Name      string         `json:"name"`
 			Arguments map[string]any `json:"arguments"`
 		}
-		if json.Unmarshal(req.Params, &p) != nil {
-			res["error"] = map[string]any{"code": -32602, "message": "invalid params"}
-			reply(w, 200, res)
+		if json.Unmarshal(req.Params, &p) != nil || p.Name == "" {
+			rpcError(w, 200, req.ID, -32602, "invalid params")
 			return
 		}
-		data, e := g.Call(bearer(r), p.Name, p.Arguments)
-		if e != nil {
-			result = map[string]any{"isError": true, "content": []any{map[string]string{"type": "text", "text": e.Error()}}}
+		if err := validateTool(p.Name, p.Arguments); err != nil {
+			rpcError(w, 200, req.ID, -32602, err.Error())
+			return
+		}
+		data, err := g.CallContext(ctx, key, p.Name, p.Arguments)
+		if err != nil {
+			result = map[string]any{"isError": true, "content": []any{map[string]string{"type": "text", "text": err.Error()}}}
 		} else if m, ok := data.(map[string]any); ok && m["mimeType"] == "image/png" {
-			result = map[string]any{"content": []any{map[string]any{"type": "image", "mimeType": "image/png", "data": m["base64"]}, map[string]any{"type": "text", "text": fmt.Sprintf("Virtual desktop origin: (%v, %v), dimensions: %v x %v. Add origin to screenshot-relative coordinates. Linux X11 origin defaults to (0,0).", m["origin_x"], m["origin_y"], m["width"], m["height"])}}}
+			result = map[string]any{"content": []any{map[string]any{"type": "image", "mimeType": "image/png", "data": m["base64"]}, map[string]any{"type": "text", "text": fmt.Sprintf("Virtual desktop origin: (%v, %v), dimensions: %v x %v. Add origin to screenshot-relative coordinates.", m["origin_x"], m["origin_y"], m["width"], m["height"])}}}
 		} else {
 			b, _ := json.Marshal(data)
 			result = map[string]any{"content": []any{map[string]string{"type": "text", "text": string(b)}}}
 		}
 	default:
-		res["error"] = map[string]any{"code": -32601, "message": fmt.Sprintf("unknown method %s", req.Method)}
-		reply(w, 200, res)
+		rpcError(w, 200, req.ID, -32601, "unknown method")
 		return
 	}
-	res["result"] = result
-	reply(w, 200, res)
+	reply(w, 200, map[string]any{"jsonrpc": "2.0", "id": req.ID, "result": result})
 }
 
 func validateTool(name string, args map[string]any) error {

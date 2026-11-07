@@ -1,15 +1,12 @@
 package core
 
-const dashboard = `<!doctype html><html lang="id"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RelayDesk</title>
-<style>:root{color-scheme:dark;font:16px system-ui;background:#0c1220;color:#edf2ff}body{max-width:1050px;margin:40px auto;padding:0 24px}h1{font-size:36px;margin-bottom:8px}p,small{color:#a8b9d4}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}.card{background:#151f32;border:1px solid #29364e;border-radius:14px;padding:22px;margin:20px 0}input,select,button{font:inherit;border:1px solid #394862;border-radius:8px;padding:10px;margin:6px 3px;background:#10192a;color:inherit}button{cursor:pointer;background:#365fe8}button.danger{background:#8c3042}pre{white-space:pre-wrap;word-break:break-all;background:#0b1220;padding:14px;border-radius:8px}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:12px 6px;border-bottom:1px solid #29364e}.pill{color:#76e6ba}#error{color:#ffb5bf}code{font-size:13px}label{display:block}</style>
-<h1>RelayDesk <small>0.1</small></h1><p>Pusat akses agent ke desktop Windows dan Linux lewat jaringan privat lu.</p>
-<section class="card" id="login"><label>Admin token <input id="token" type="password" autocomplete="off" placeholder="Token dari gateway"></label><button id="connect">Buka dashboard</button><small>Token hanya disimpan di memori tab ini.</small></section>
-<p id="error"></p><main hidden id="main"><button id="refresh">Refresh</button><button id="logout">Kunci dashboard</button>
-<div class="grid"><section class="card"><h2>Tambah PC</h2><input id="pcname" placeholder="Nama, misalnya pc-rumah"><button id="pair">Buat kode pairing</button><p>Kode berlaku 10 menit dan hanya dapat dipakai sekali. Masukkan ke connector di PC tujuan.</p></section>
-<section class="card"><h2>Hubungkan agent</h2><input id="agentname" placeholder="agent-vps / hermes"><input id="devices" placeholder="ID PC dipisahkan koma, atau *"><button id="agent">Buat akses agent</button><p>* memberikan akses ke semua perangkat, termasuk yang ditambahkan nanti.</p></section></div>
-<section class="card"><h2>Hasil</h2><pre id="result">Kode atau token baru ditampilkan di sini. Simpan dengan aman.</pre></section>
-<section class="card"><h2>Perangkat</h2><div id="pcs"></div></section><section class="card"><h2>Agent</h2><div id="agents"></div></section><p>Cabut akses menghentikan perintah berikutnya. Tindakan yang sudah selesai tidak dibatalkan.</p></main>
-<script>
-let token='';const el=id=>document.getElementById(id);async function api(path,data={}){const r=await fetch('/admin/'+path,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(data)});const v=await r.json();if(!r.ok)throw Error(v.error||r.status);return v}function safe(fn){return async()=>{el('error').textContent='';try{await fn()}catch(e){el('error').textContent=e.message}}}function render(target,items,kind){const box=el(target);box.replaceChildren();if(!items.length){box.textContent='Belum ada.';return}for(const item of items){const row=document.createElement('p');const text=document.createElement('span');text.textContent=item.name+' · '+item.id+' · '+(item.revoked?'Akses dicabut':kind==='device'?(Date.now()-Date.parse(item.last_seen)<10000?'Online':'Offline'):'Aktif')+' ';row.append(text);if(!item.revoked){const b=document.createElement('button');b.className='danger';b.textContent='Cabut akses';b.onclick=safe(async()=>{if(confirm('Cabut akses '+item.name+'?')){await api('revoke',{kind,id:item.id});await refresh()}});row.append(b)}box.append(row)}}async function refresh(){const d=await api('list');render('pcs',d.devices,'device');render('agents',d.agents,'agent')}
-el('connect').onclick=safe(async()=>{token=el('token').value;await refresh();el('token').value='';el('login').hidden=true;el('main').hidden=false});el('refresh').onclick=safe(refresh);el('logout').onclick=()=>location.reload();el('pair').onclick=safe(async()=>{el('result').textContent=JSON.stringify(await api('pair',{name:el('pcname').value}),null,2)});el('agent').onclick=safe(async()=>{el('result').textContent=JSON.stringify(await api('agent',{name:el('agentname').value,devices:el('devices').value.split(',').map(x=>x.trim()).filter(Boolean)}),null,2);await refresh()});
-</script></html>`
+import _ "embed"
+
+//go:embed web/dashboard.html
+var dashboard string
+
+//go:embed web/dashboard.css
+var dashboardCSS string
+
+//go:embed web/dashboard.js
+var dashboardJS string

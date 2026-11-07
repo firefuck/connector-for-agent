@@ -3,5 +3,13 @@ Type=Application
 Name=RelayDesk Connector
 Comment=Connect this desktop to your agent gateway
 Exec=relaydesk
+TryExec=relaydesk
+Icon=relaydesk
 Terminal=true
 Categories=Network;RemoteAccess;
+Keywords=remote;desktop;connector;gateway;
+Actions=DisableAutostart;
+
+[Desktop Action DisableAutostart]
+Name=Disable autostart
+Exec=/usr/share/relaydesk/autostart-linux.sh disable

@@ -11,6 +11,8 @@ import (
 	"unicode/utf16"
 )
 
+const nonblockFileFlag = 0
+
 func Capabilities() []string {
 	return []string{"system_exec", "files", "desktop_windows_interactive", "browser_open"}
 }
