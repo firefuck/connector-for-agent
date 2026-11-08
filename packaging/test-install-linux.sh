@@ -38,7 +38,7 @@ printf '{}\n' > "$XDG_CONFIG_HOME/relaydesk/connector.json"
 "$autostart" enable
 desktop-file-validate "$XDG_CONFIG_HOME/autostart/relaydesk.desktop"
 test "$(stat -c %a "$XDG_CONFIG_HOME/autostart/relaydesk.desktop")" = 600
-grep -q '^Exec=/usr/bin/relaydesk connector$' "$XDG_CONFIG_HOME/autostart/relaydesk.desktop"
+grep -q '^Exec=/usr/bin/relaydesk connector --autostart$' "$XDG_CONFIG_HOME/autostart/relaydesk.desktop"
 "$uninstall"
 test ! -e "$XDG_CONFIG_HOME/autostart/relaydesk.desktop"
 test -f "$XDG_CONFIG_HOME/relaydesk/connector.json"

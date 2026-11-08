@@ -58,7 +58,7 @@ func desktopRun(ctx context.Context, c *exec.Cmd) (map[string]any, error) {
 }
 func desktop(ctx context.Context, action string, a map[string]any) (any, error) {
 	if os.Getenv("XDG_SESSION_TYPE") == "wayland" {
-		return nil, errors.New("Wayland GUI control is not implemented yet; shell and file tools remain available")
+		return nil, errors.New("Wayland GUI requires the interactive portal helper; start connector without --headless and approve sharing locally")
 	}
 	if os.Getenv("DISPLAY") == "" {
 		return nil, errors.New("connector must run inside the logged-in desktop session")

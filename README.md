@@ -4,7 +4,7 @@ RelayDesk menghubungkan agent AI yang sudah lo punya ke PC Windows/Linux melalui
 
 **Pasang connector di setiap PC tujuan, bukan model atau agent AI baru.** Agent VPS dan Hermes tetap berjalan di host masing-masing. Jaringan WireGuard/MikroTik CHR yang sudah ada tetap dipakai.
 
-> **Status 0.1: masih tahap pengembangan.** Dashboard web sudah tersedia, tetapi aplikasi connector PC masih wizard console. **Kontrol GUI GNOME Wayland belum tersedia**; shell dan file tetap bisa digunakan. Backend Windows sudah dibuat dan binary berhasil dibangun, tetapi belum diuji langsung pada Windows Server/10/11. Baca [status verifikasi](docs/STATUS.md) sebelum menggunakan pada desktop penting.
+> **Status 0.1: masih tahap pengembangan.** Connector sekarang memiliki window kontrol lokal, Pause/Resume/Stop, indikator aktivitas, `doctor`, dan backend portal GNOME Wayland dengan consent. Baseline Linux pengguna adalah Ubuntu 22.04. **Acceptance GNOME asli dan Windows Server/10/11 belum dijalankan**; pengguna memilih menguji Windows sendiri. Ikuti [panduan uji manual lengkap](docs/MANUAL_ACCEPTANCE.md) dan [status verifikasi](docs/STATUS.md).
 
 **Lisensi proprietary:** publikasi source tidak memberi izin umum untuk memakai, memodifikasi, menjual, mendistribusikan ulang atau melakukan rebrand. Penggunaan di luar hak yang sudah berlaku memerlukan izin tertulis pemegang hak cipta. Lihat [LICENSE](LICENSE), [NOTICE](NOTICE), [komponen pihak ketiga](THIRD_PARTY_NOTICES.md), dan [batas perlindungan merek](docs/BRAND_PROTECTION.md). Panduan build/instalasi berikut ditujukan kepada pemilik dan pengguna yang mendapat izin.
 
@@ -74,11 +74,11 @@ Agent tidak perlu plugin remote desktop terpisah jika host agent sudah mendukung
 | Dashboard web | Pairing, daftar PC/agent, izin tool, revoke, ringkasan lease, drawer desktop/HP | Mengelola akses; bukan viewer video remote desktop |
 | MCP | 15 tool, HTTP dan bridge stdio, cancellation | Telah diuji dengan SDK resmi lokal; belum dengan dua agent asli |
 | Linux X11 | Screenshot, mouse, keyboard/Unicode, browser, shell, file | GUI diuji di Xvfb + Tk; desktop fisik/multimonitor belum diuji |
-| GNOME Wayland | Shell dan file | **Screenshot/input GUI belum diimplementasikan** |
+| GNOME Wayland | Helper RemoteDesktop/ScreenCast portal + PipeWire, screenshot/input pada satu monitor dengan consent | Baseline Ubuntu 22.04; uji protokol/capture terisolasi, belum acceptance GNOME asli |
 | Windows interaktif | Source backend PowerShell/.NET, binary x64 | Belum diuji pada Windows asli; jangan anggap dukungan semua aplikasi sudah tervalidasi |
 | Instalasi Linux | DEB, icon/menu desktop, autostart setelah pairing | Install/remove diuji terisolasi; login/autostart desktop nyata belum diuji |
-| Instalasi Windows | EXE portable dan script pemasangan per-user | Bukan installer GUI EXE/MSI bertanda tangan; script belum diuji pada Windows |
-| Kontrol lokal | Ctrl+C atau tutup window connector | Pause/Stop GUI, hotkey dan takeover otomatis belum tersedia |
+| Instalasi Windows | EXE portable, script per-user, source installer Inno Setup + script signing | Build installer/instalasi Windows belum diuji; signature memerlukan sertifikat pemilik |
+| Kontrol lokal | Window GTK/WinForms, Pause/Resume/Stop, indikator, shortcut | GTK diuji di Xvfb; takeover Windows belum diuji; takeover otomatis GNOME tidak tersedia |
 | Sesi terkunci/UAC/RDP disconnected | Belum didukung | Fokus saat ini desktop aktif ketika user bekerja; prompt UAC disetujui lokal |
 
 PC Online hanya berarti connector baru menghubungi gateway, bukan jaminan capture/input siap. Lihat kemampuan perangkat dan hasil tool. Tidak ada Wake-on-LAN, auto-login, video streaming, PTY interaktif atau integrasi DOM/CDP pada versi ini.
@@ -214,7 +214,7 @@ Salin `dist/relaydesk.exe` ke PC tujuan, lalu:
 1. Buka executable sebagai user desktop yang sedang login.
 2. Isi URL gateway, kode pairing, dan nama perangkat pada wizard console.
 3. Jika URL HTTP, konfirmasikan hanya jika benar memakai jaringan WireGuard terpercaya.
-4. Biarkan window connector terbuka. Perangkat akan muncul Online setelah polling berhasil.
+4. Window kontrol lokal terbuka dalam keadaan Pause. Klik **Resume**, lalu agent mengambil lease baru. Biarkan window terlihat; menutupnya melakukan Stop.
 
 Untuk memasang di `%LocalAppData%\RelayDesk` dan autostart setelah login, salin juga folder `packaging/` dengan posisi relatif yang sama terhadap `dist/`. Sertakan `LICENSE`, `NOTICE`, dan `THIRD_PARTY_NOTICES.md` di `dist/` bersama EXE; installer memeriksanya sebelum memasang:
 
@@ -235,9 +235,9 @@ sudo apt install ./dist/relaydesk_0.1.0_amd64.deb
 relaydesk
 ```
 
-`apt` memasang dependensi `xdotool`, ImageMagick, `xclip`, dan `xdg-utils`. Jalankan `relaydesk` sebagai **user desktop biasa**, bukan lewat sudo. Isi wizard seperti Windows.
+`apt` memasang dependensi X11, Python GI/GTK3, GStreamer/PipeWire dan portal. Pada GNOME pastikan `xdg-desktop-portal-gnome` terpasang, termasuk jika menggunakan `--no-install-recommends`. Jalankan `relaydesk` sebagai **user desktop biasa**, bukan lewat sudo. Isi wizard seperti Windows.
 
-Untuk binary portable, jalankan `./dist/relaydesk-linux-amd64`; dependensi GUI harus tersedia sendiri. Pada X11, connector harus berjalan di sesi desktop yang memiliki `DISPLAY`. Pada GNOME Wayland, GUI ditolak dengan pesan eksplisit; shell dan file tetap dapat digunakan. Backend Wayland tetap menjadi prioritas pengembangan, bukan alasan wajib mengganti desktop pengguna.
+Untuk binary portable, jalankan `./dist/relaydesk-linux-amd64`; dependensi GUI harus tersedia sendiri. Pada X11, connector harus berjalan di sesi desktop yang memiliki `DISPLAY`. Pada GNOME Wayland, klik **Resume** pada window lokal lalu setujui dialog portal untuk satu monitor dan input keyboard/pointer. Tanpa consent, connector tetap dijeda. Lihat [setup Ubuntu dan shortcut](docs/MANUAL_ACCEPTANCE.md#ubuntu-2204-gnome-wayland).
 
 Autostart setelah pairing, jalankan tanpa sudo:
 
@@ -266,7 +266,7 @@ Buat akses terpisah lewat **Tambah agent** untuk `agent-vps` dan `hermes`:
 | Akses penuh | Semua tool, termasuk shell dan file |
 | Manual | Daftar nama tool eksplisit; kosong menolak semua; `*` memberi semua |
 
-Preset adalah izin memanggil tool, bukan penambahan kemampuan backend. Memberi izin screenshot pada PC Wayland tidak membuat screenshot Wayland tersedia.
+Preset menentukan izin tool. Izin gateway tidak menggantikan consent desktop lokal; screenshot/input Wayland membutuhkan portal yang tersedia dan user menyetujui sharing.
 
 ### Remote MCP — jika host agent mendukung HTTP
 
@@ -306,7 +306,7 @@ Urutan dasar:
 1. `devices_list`: pilih **ID** PC yang diizinkan dan Online.
 2. `session_acquire`: ambil lease eksklusif PC itu.
 3. Periksa kondisi dengan `system_info` dan screenshot jika backend mendukung.
-4. Jalankan tindakan yang diperlukan; ambil screenshot baru sebelum aksi GUI penting.
+4. Ambil screenshot baru sebelum **setiap input desktop**; kirim `frame_id` jika host agent mendukungnya. Frame berlaku 30 detik dan dikonsumsi oleh satu percobaan input pada connector interaktif.
 5. Periksa screenshot/output sesudah tindakan.
 6. `session_release`: lepaskan kontrol ketika selesai.
 
@@ -348,9 +348,19 @@ Contoh berikut dijalankan dari root repo pada Linux. Setelah DEB terpasang, `./d
 | `admin` | List, buat pairing/agent, ubah izin, revoke |
 | `mcp` | Bridge stdio ke gateway |
 | `token` | Membuat secret acak |
-| `version`, `help` | Versi dan bantuan |
+| `version`, `help`, `license` | Versi, bantuan dan lisensi tertanam |
+| `doctor` | Diagnosis read-only teks/JSON; tidak mengambil job/lease atau meminta consent |
+| `control --op pause\|stop\|status` | Kontrol lokal Linux melalui Unix socket privat; Resume tetap lewat window |
 
-`relaydesk doctor` belum tersedia.
+```sh
+relaydesk doctor
+relaydesk doctor --json
+relaydesk control --op pause  # Linux, tanpa koneksi gateway
+```
+
+`doctor --json` memakai schema versi 1 dan exit code 0 jika semua check ready, 1 jika ada check belum siap/terverifikasi. Pada GUI, `needs_consent`/`unknown` normal untuk probe yang tidak mengambil screenshot. URL/token dan raw error gateway tidak dicetak. `--config` memilih pairing custom.
+
+Connector normal menampilkan window dan mulai Pause. Opsi `connector --headless` khusus tes X11/shell tanpa window; GNOME Wayland menolaknya. Jangan memakai mode itu untuk acceptance kontrol lokal. Opsi `--autostart` menghormati marker Stop lokal; start manual memulai sesi baru yang dijeda.
 
 ### Admin CLI
 
@@ -407,7 +417,9 @@ Command connector membaca URL/token/izin HTTP dari file config, bukan dari `RELA
 ### Mulai, berhenti, dan pembaruan
 
 - Mulai PC yang sudah dipair: jalankan `relaydesk connector` atau executable tanpa argumen dengan config yang sama.
-- Hentikan kontrol lokal: Ctrl+C atau tutup window connector. Pause/hotkey lokal belum tersedia.
+- Jeda: tombol **Pause**, shortcut lokal, atau `relaydesk control --op pause` pada Linux. Shell/file/input aktif dibatalkan. **Resume** harus dipilih di window lokal, kemudian agent acquire lease baru.
+- Hentikan: **Stop** atau tutup window connector. Pairing tersimpan dan autostart menghormati marker Stop sampai lo menjalankan connector secara eksplisit lagi.
+- Shortcut global GNOME: `python3 /usr/share/relaydesk/hotkey-linux.py`; Windows memakai Ctrl+Alt+P jika pendaftaran berhasil. Lihat panduan manual untuk konflik shortcut dan takeover.
 - Cabut permanen: dashboard → Perangkat/Agent → Cabut akses. Revoke bekerja pada gateway; uninstall saja tidak mencabut token.
 - Koneksi terputus: connector mencoba menghubungi gateway kembali; aksi tidak direplay otomatis.
 - Reboot: autostart menunggu user login. Layar login, lock, UAC secure desktop dan sesi unattended bukan cakupan saat ini.
@@ -454,7 +466,7 @@ powershell -NoProfile -File .\packaging\install-windows.ps1 -Uninstall
 powershell -NoProfile -File .\packaging\install-windows.ps1 -Uninstall -ForgetPairing
 ```
 
-Script menghapus startup shortcut dan binary terpasang. Config dipertahankan kecuali `-ForgetPairing`. Revoke perangkat pada gateway tetap diperlukan.
+Script menghapus startup shortcut, binary dan notice terpasang. Config dipertahankan kecuali `-ForgetPairing`. Revoke perangkat pada gateway tetap diperlukan.
 
 ## Data, izin, dan keamanan
 
@@ -495,7 +507,7 @@ Jika revoke melaporkan kegagalan menyimpan state, akses dicabut di memori tetapi
 | Kode pairing tidak berlaku | Kode sudah dipakai atau lewat 10 menit. Buat kode baru; jangan memakai admin/agent token sebagai kode |
 | `configuration already exists` | PC sudah punya pairing. Jalankan connector; untuk identitas baru, revoke yang lama dan pilih config baru secara sengaja |
 | PC Offline | Connector harus berjalan, gateway reachable, config benar, token belum dicabut. Periksa log console |
-| PC Online tetapi tool GUI gagal | Online hanya heartbeat. Cek backend, user desktop, izin dan sesi aktif; Wayland GUI memang belum tersedia |
+| PC Online tetapi tool GUI gagal | Online hanya heartbeat. Cek Pause lokal, consent portal, dependency dan sesi; jalankan doctor |
 | `connector must run inside the logged-in desktop session` | Jalankan connector dari terminal sesi GUI user, bukan daemon headless/sudo |
 | `device is controlled by another agent` | Lepaskan lease dari agent pemilik atau tunggu kedaluwarsa; jangan memulai dua connector untuk mengatasinya |
 | Tool tidak muncul / forbidden | Cek preset atau daftar tool agent. Refresh discovery setelah perubahan izin lalu acquire sesi baru |
@@ -507,7 +519,7 @@ Jika revoke melaporkan kegagalan menyimpan state, akses dicabut di memori tetapi
 
 ## Pengujian
 
-Perintah berikut untuk pengembang, dari root repository. Dependency browser/SDK hanya diperlukan untuk tes; runtime RelayDesk memakai Go standard library dan utility OS backend.
+Perintah berikut untuk pengembang, dari root repository. Dependency browser/SDK hanya diperlukan untuk tes; core Go memakai standard library; helper desktop Linux memerlukan Python GI/GTK/GStreamer dan Windows memakai PowerShell/.NET. Gateway tetap tidak membutuhkan runtime GUI.
 
 ```sh
 gofmt -w identity.go cmd internal
@@ -526,9 +538,16 @@ sh packaging/test-install-linux.sh
 # Docker: build/runtime gateway serta apt install/remove lengkap di container.
 python3 packaging/test-container.py
 sh packaging/test-deb-container.sh
+RELAYDESK_TEST_DISTRO=ubuntu22 sh packaging/test-deb-container.sh
 
 # GUI X11 terisolasi: membutuhkan Xvfb, xdotool, xclip, ImageMagick, Python tkinter.
 RELAYDESK_X11_TEST=1 go test -race ./internal/core -run '^TestLinux' -count=1 -v
+
+# GTK lokal + Pause shell + Stop offline (Xvfb), bukan GNOME asli.
+python3 integration/test_local_controls.py
+# Protokol portal tiruan di bus privat; GStreamer dengan sumber uji.
+dbus-run-session -- /usr/bin/python3 integration/test_portal_requests.py
+/usr/bin/python3 integration/test_portal_backend.py
 
 # SDK MCP resmi, HTTP dan stdio.
 python3 -m venv .venv-mcp
@@ -558,7 +577,7 @@ Pastikan direktori binary Go (`go env GOPATH` + `/bin`, atau `GOBIN`) ada di PAT
 
 ## Roadmap dan struktur source
 
-Prioritas berikutnya: GNOME Wayland pada desktop aktif → Pause/Stop lokal, hotkey dan takeover manusia → indikator sesi lokal → `relaydesk doctor`. Dukungan unattended/RDP terkunci dan kontrol UAC otomatis masuk tahap lanjutan. Rancangan belum berarti fitur tersedia pada binary.
+Implementasi desktop aktif, kontrol lokal dan doctor tersedia; acceptance pada GNOME/Windows asli serta dua agent pengguna mengikuti [panduan manual](docs/MANUAL_ACCEPTANCE.md). Source installer dan jalur signing tersedia, tetapi installer bertanda tangan belum dihasilkan. GNOME automatic takeover, unattended/RDP terkunci, broker UAC, mTLS, streaming dan fitur lanjutan tetap terpisah dari implementasi saat ini.
 
 | Path | Isi |
 | --- | --- |
@@ -571,6 +590,7 @@ Prioritas berikutnya: GNOME Wayland pada desktop aktif → Pause/Stop lokal, hot
 | `integration/` | Tes SDK MCP dan browser |
 | `docs/images/` | Screenshot dashboard dengan data contoh |
 | `docs/STATUS.md` | Implementasi dan pengujian aktual |
+| `docs/MANUAL_ACCEPTANCE.md` | Setup Ubuntu/Windows, build/sign installer, pengujian desktop dan dua agent |
 | `docs/SECURITY_REVIEW.md` | Temuan audit, perbaikan dan batas keamanan |
 | `docs/CODEX_HANDOFF.md` | Konteks arsitektur dan pekerjaan berikutnya |
 | `docs/DESKTOP_BACKEND_PLAN.md` | Spesifikasi fitur desktop yang disetujui, belum selesai |

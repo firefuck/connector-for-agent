@@ -92,7 +92,7 @@ def fixture(binary):
                     token = admin_post("/admin/agent", {"name": "sdk-full", "devices": [device_id], "tools": ["*"]})["token"]
                     restricted = admin_post("/admin/agent", {"name": "sdk-restricted", "devices": [device_id], "tools": ["devices_list"]})["token"]
                     connector = subprocess.Popen(
-                        [str(binary), "connector", "--config", str(config)],
+                        [str(binary), "connector", "--headless", "--config", str(config)],
                         stdin=subprocess.DEVNULL,
                         stdout=connector_log,
                         stderr=subprocess.STDOUT,

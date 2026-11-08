@@ -18,8 +18,14 @@ import (
 	"time"
 )
 
+type exitStatus int
+
+func (e exitStatus) Error() string { return "diagnosis incomplete" }
 func main() {
 	if e := mainRun(); e != nil {
+		if code, ok := e.(exitStatus); ok {
+			os.Exit(int(code))
+		}
 		fmt.Fprintln(os.Stderr, "Error:", e)
 		os.Exit(1)
 	}
@@ -36,13 +42,16 @@ func mainRun() error {
 		fmt.Print(relaydesk.NoticeText(), relaydesk.LicenseText())
 		return nil
 	case "help", "--help", "-h":
-		fmt.Println(relaydesk.Name + ": gateway | pair | connector | admin | mcp | token | version | license\nRun a command with --help for flags. No arguments starts the pairing wizard.")
+		fmt.Println(relaydesk.Name + ": gateway | pair | connector | control | doctor | admin | mcp | token | version | license\nRun a command with --help for flags. No arguments starts the pairing wizard.")
 		return nil
 	case "token":
 		fmt.Println(core.Secret())
 		return nil
 	}
 	f := flag.NewFlagSet(os.Args[1], flag.ContinueOnError)
+	jsonOutput := f.Bool("json", false, "Machine-readable diagnosis")
+	headless := f.Bool("headless", false, "Run without the local window (X11/shell testing only)")
+	autostart := f.Bool("autostart", false, "Respect a previous local Stop")
 	gateway := f.String("gateway", os.Getenv("RELAYDESK_GATEWAY"), "Gateway URL")
 	wg := f.Bool("wireguard-http", os.Getenv("RELAYDESK_WIREGUARD_HTTP") == "1", "Allow HTTP over your WireGuard network")
 	config := f.String("config", core.DefaultConfig(), "Connector credential file")
@@ -64,6 +73,25 @@ func mainRun() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	switch os.Args[1] {
+	case "doctor":
+		report := core.Doctor(ctx, *config)
+		if *jsonOutput {
+			if e := json.NewEncoder(os.Stdout).Encode(report); e != nil {
+				return e
+			}
+		} else {
+			fmt.Print(report.Text())
+		}
+		if report.ExitCode != 0 {
+			return exitStatus(report.ExitCode)
+		}
+		return nil
+	case "control":
+		result, e := core.LocalControl(*config, *op)
+		if e != nil {
+			return e
+		}
+		return json.NewEncoder(os.Stdout).Encode(result)
 	case "gateway":
 		g, e := core.NewGateway(*state, os.Getenv("RELAYDESK_ADMIN_TOKEN"))
 		if e != nil {
@@ -134,7 +162,7 @@ func mainRun() error {
 			defer cancel()
 		}
 		fmt.Fprintln(os.Stderr, "Connecting device:", cfg.ID, "— Ctrl+C to disconnect")
-		return core.RunConnector(ctx, c)
+		return core.RunInteractiveConnector(ctx, c, *config, *headless, *autostart)
 	case "admin":
 		c, e := core.NewClient(strings.TrimRight(*gateway, "/"), os.Getenv("RELAYDESK_ADMIN_TOKEN"), *wg)
 		if e != nil {
@@ -173,7 +201,7 @@ func mainRun() error {
 func wizard() error {
 	reader := bufio.NewReader(os.Stdin)
 	ask := func(q string) string { fmt.Print(q); s, _ := reader.ReadString('\n'); return strings.TrimSpace(s) }
-	fmt.Printf("%s connector %s\nWindows / Linux X11. Close this window or Ctrl+C to disconnect.\n", relaydesk.Name, relaydesk.Version)
+	fmt.Printf("%s connector %s\nWindows / Linux X11 / GNOME Wayland. Local controls open after pairing.\n", relaydesk.Name, relaydesk.Version)
 	path := core.DefaultConfig()
 	if _, e := os.Stat(path); os.IsNotExist(e) {
 		u := ask("Gateway URL: ")
@@ -206,5 +234,5 @@ func wizard() error {
 	fmt.Println("Config:", filepath.Clean(path))
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return core.RunConnector(ctx, c)
+	return core.RunInteractiveConnector(ctx, c, path, false, false)
 }

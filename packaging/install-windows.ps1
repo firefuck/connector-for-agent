@@ -31,6 +31,6 @@ foreach($name in $notices){Copy-Item (Join-Path $PSScriptRoot "..\dist\$name") (
 $userSid=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 $acl=& icacls.exe $dir /inheritance:r /grant:r "*${userSid}:(OI)(CI)F" '*S-1-5-18:(OI)(CI)F'
 if($LASTEXITCODE -ne 0){throw 'Could not restrict application folder permissions'}
-if($Persistent){$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut($link);$s.TargetPath=$exe;$s.Arguments='connector';$s.WorkingDirectory=$dir;$s.Save()}
+if($Persistent){$w=New-Object -ComObject WScript.Shell;$s=$w.CreateShortcut($link);$s.TargetPath=$exe;$s.Arguments='connector --autostart';$s.WorkingDirectory=$dir;$s.Save()}
 Write-Host "Installed at $dir. Pairing wizard opens now. Persistent mode starts after user login; it does not unlock Windows."
 & $exe

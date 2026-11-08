@@ -23,7 +23,7 @@ case "${1:-enable}" in
 Type=Application
 Name=RelayDesk Connector
 Comment=Connect this paired desktop to your agent gateway
-Exec=/usr/bin/relaydesk connector
+Exec=/usr/bin/relaydesk connector --autostart
 TryExec=/usr/bin/relaydesk
 Icon=relaydesk
 Terminal=true

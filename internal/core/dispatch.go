@@ -54,6 +54,10 @@ func (g *Gateway) CallContext(ctx context.Context, key, name string, args map[st
 		g.mu.Unlock()
 		return nil, errors.New("device unavailable or forbidden")
 	}
+	if d.Paused {
+		g.mu.Unlock()
+		return nil, errors.New("device paused locally; local user must resume")
+	}
 	l := g.leases[id]
 	now := time.Now()
 	if l.Owner != "" && l.Owner != owner && now.Before(l.Until) {
@@ -65,7 +69,7 @@ func (g *Gateway) CallContext(ctx context.Context, key, name string, args map[st
 			g.mu.Unlock()
 			return nil, errors.New("device offline")
 		}
-		g.leases[id] = lease{owner, now.Add(defaultLeaseDuration)}
+		g.leases[id] = lease{ID: Secret()[:24], Owner: owner, Until: now.Add(defaultLeaseDuration)}
 		g.mu.Unlock()
 		return map[string]any{"lease_seconds": int(defaultLeaseDuration / time.Second)}, nil
 	}
@@ -106,9 +110,9 @@ func (g *Gateway) CallContext(ctx context.Context, key, name string, args map[st
 		g.mu.Unlock()
 		return nil, errors.New("timeout_seconds must be 1..300")
 	}
-	j := &job{Command: Command{Secret()[:24], name, args, now.Add(time.Duration(seconds) * time.Second)}, owner: owner, device: id, done: make(chan Result, 1)}
+	j := &job{Command: Command{DeviceID: id, LeaseID: l.ID, ID: Secret()[:24], Action: name, Args: args, Deadline: now.Add(time.Duration(seconds) * time.Second), LocalEpoch: d.LocalEpoch, DeviceName: d.Name, AgentID: a.ID, AgentName: a.Name}, owner: owner, device: id, done: make(chan Result, 1)}
 	g.jobs[j.ID] = j
-	g.leases[id] = lease{owner, j.Deadline.Add(leaseCompletionGrace)}
+	g.leases[id] = lease{ID: l.ID, Owner: owner, Until: j.Deadline.Add(leaseCompletionGrace)}
 	g.log("dispatch", owner, id, name)
 	g.mu.Unlock()
 	timer := time.NewTimer(time.Until(j.Deadline))

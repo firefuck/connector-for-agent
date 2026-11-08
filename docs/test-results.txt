@@ -121,3 +121,43 @@ PASS Docker rebuilt image, Compose policy, gateway lifecycle smoke and exact
   Additional notice test found restrictive source permissions preserved by COPY;
   fixed with explicit file mode 0644 and directory mode 0755, then rebuilt
   and reran the smoke suite.
+
+Desktop-active implementation — 2026-11-08
+Target supplied by user: Ubuntu 22 (22.04/GNOME 42 implementation baseline).
+User chose manual Windows 11 VPS and real-agent acceptance; no credentials used.
+PASS gofmt, go vet ./..., go test -race ./... -count=1, with Xvfb/Tk enabled
+  (final full Go run: core 4.636s). New coverage: local cancellation/generation,
+  gateway Pause/job/lease invalidation, frame consumption and lease/agent binding,
+  read-only diagnostic probe, redaction and bounded regular config reads.
+PASS packaging/build.sh: Linux ELF, Windows PE, DEB; legal/identity checks and
+  checksum generation. Windows cross-build does not run WinForms/PowerShell.
+PASS isolated dpkg install/remove, desktop/autostart metadata, notice preservation
+  and explicit pairing cleanup. Full apt install/remove in disposable Ubuntu
+  22.04 image, including GTK/GStreamer/PipeWire elements. No GNOME login started.
+PASS integration/test_local_controls.py: actual GTK window in a private Xvfb,
+  local Resume; MCP screenshot/frame metadata and one-use frame enforcement;
+  Pause cancels actual shell subprocess; gateway sync; Stop while gateway is down;
+  pairing preserved; autostart respects the persisted Stop marker.
+  Found/fixed cancelled shell returning a normal MCP result, Stop ACK shutdown
+  race and Stop marker persistence race. Reran the black-box test successfully.
+PASS integration/test_portal_requests.py under dbus-run-session: real Gio request
+  handle and Response signal plumbing against a fake portal; accept/deny/cancel.
+PASS integration/test_portal_backend.py: real GStreamer videotestsrc/pngenc/appsink;
+  fake portal input verifies 2x pixel/logical mapping, bounds, Unicode keysyms,
+  chord ordering/release, cancellation and frame consumption. Four tests passed.
+  These are NOT GNOME consent, real PipeWire desktop capture, or compositor input.
+PASS official MCP Python SDK 1.30.0/jsonschema 4.26.0: HTTP/stdio initialize, ping,
+  15 tool schemas, discovery, lease, Unicode file/exec/release and policy denial.
+  Integration connector now explicitly uses --headless (test mode).
+PASS Chromium dashboard regressions on desktop/390px/320px: drawers, focus,
+  auth/ACL/revoke, literal XSS, pending requests and token cleanup.
+PASS Docker gateway rebuild/runtime: Compose policy, non-root/read-only, auth,
+  pairing, hashed state, persistence, revocation, pending-job SIGTERM, notices.
+PASS govulncheck v1.9.0 (Go 1.27.3), Linux source and Windows target:
+  No vulnerabilities found. Not a full OS/Python/GTK/GStreamer vulnerability scan.
+NOT RUN: real GNOME session acceptance; Windows 11/10/Server desktop/hotkey/hooks;
+  Inno Setup compilation/install/uninstall; certificate-backed signing;
+  actual VPS agent/Hermes. See docs/MANUAL_ACCEPTANCE.md for user-run procedures.
+NO SIGNED ARTIFACT: signing script requires the owner's certificate/private key.
+GNOME automatic physical-input takeover remains unsupported; explicit Pause and
+  optional GNOME shortcut are available. No UAC/locked/RDP disconnected support.

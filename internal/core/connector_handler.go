@@ -15,6 +15,8 @@ func (g *Gateway) connector(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
+		LocalEpoch   string   `json:"local_epoch"`
+		Paused       bool     `json:"paused"`
 		ID           string   `json:"id"`
 		Platform     string   `json:"platform"`
 		Capabilities []string `json:"capabilities"`
@@ -27,6 +29,15 @@ func (g *Gateway) connector(w http.ResponseWriter, r *http.Request) {
 		d := g.device(bearer(r))
 		if d == nil {
 			return 401, map[string]string{"error": "device revoked or unknown"}
+		}
+		if in.LocalEpoch != "" && r.URL.Path != "/result" {
+			if len(in.LocalEpoch) > 64 {
+				return 400, map[string]string{"error": "invalid local generation"}
+			}
+			if d.LocalEpoch != in.LocalEpoch || in.Paused {
+				g.cancelSessionsLocked("", d.ID, "local session changed; acquire a new lease")
+			}
+			d.LocalEpoch, d.Paused = in.LocalEpoch, in.Paused
 		}
 		d.LastSeen = time.Now()
 		d.Platform = in.Platform
@@ -47,12 +58,21 @@ func (g *Gateway) connector(w http.ResponseWriter, r *http.Request) {
 			active := j != nil && j.device == d.ID && time.Now().Before(j.Deadline)
 			return 200, map[string]bool{"active": active}
 		}
+		if r.URL.Path == "/connector-state" {
+			return 200, map[string]bool{"ok": true}
+		}
 		for _, j := range g.jobs {
-			if j.device == d.ID && !j.delivered && time.Now().Before(j.Deadline) {
+			if !d.Paused && j.device == d.ID && !j.delivered && time.Now().Before(j.Deadline) {
 				j.delivered = true
 				return 200, j.Command
 			}
 		}
-		return 200, map[string]any{"idle": true}
+		info := map[string]any{"idle": true, "device_id": d.ID, "device_name": d.Name}
+		if l := g.leases[d.ID]; time.Now().Before(l.Until) {
+			if a := g.State.Agents[l.Owner]; a != nil {
+				info["agent_id"], info["agent_name"] = a.ID, a.Name
+			}
+		}
+		return 200, info
 	})
 }

@@ -106,7 +106,7 @@ function renderOverview() {
     const row = node('button', undefined, 'device-row'); row.setAttribute('aria-haspopup', 'dialog'); row.setAttribute('aria-controls', 'drawer'); row.onclick = () => openDrawer('devices');
     const icon = node('span', '▣', 'device-icon'); icon.setAttribute('aria-hidden', 'true');
     const copy = node('span', undefined, 'device-copy'); copy.append(node('strong', d.name || 'PC tanpa nama'), node('small', platformName(d)));
-    row.append(icon, copy, node('span', online(d) ? 'Online' : 'Offline', 'status' + (online(d) ? ' online' : ''))); box.append(row);
+    row.append(icon, copy, node('span', online(d) ? (d.paused ? 'Dijeda lokal' : 'Online') : 'Offline', 'status' + (online(d) ? ' online' : ''))); box.append(row);
   }
 }
 function render() {
@@ -115,7 +115,7 @@ function render() {
   if (!devices.length) pcs.append(node('p', 'Belum ada PC. Mulai dengan Tambah PC.'));
   for (const d of devices) {
     const row = node('article', undefined, 'entry'); const title = node('div', undefined, 'entry-title');
-    title.append(node('strong', d.name || 'PC tanpa nama'), node('span', d.revoked ? 'Dicabut' : online(d) ? 'Online' : 'Offline', 'status' + (!d.revoked && online(d) ? ' online' : '')));
+    title.append(node('strong', d.name || 'PC tanpa nama'), node('span', d.revoked ? 'Dicabut' : online(d) ? (d.paused ? 'Dijeda lokal' : 'Online') : 'Offline', 'status' + (!d.revoked && online(d) ? ' online' : '')));
     const capabilities = (d.capabilities || []).map(c => ({desktop_x11: 'Desktop X11', desktop_windows_interactive: 'Desktop Windows', browser_open: 'Browser', files: 'File', system_exec: 'Terminal'}[c] || c));
     row.append(title, node('code', d.id), node('p', platformName(d) + ' · ' + (capabilities.join(', ') || 'Kemampuan belum dilaporkan'), 'hint'));
     const lease = leases[d.id]; if (lease && Date.parse(lease.until) > Date.now()) { const a = agents.find(a => a.id === lease.owner); row.append(node('p', 'Sesi dipegang: ' + (a ? a.name : lease.owner), 'hint')); }

@@ -9,6 +9,7 @@ import (
 	"mime"
 	"net/http"
 	"relaydesk"
+	"strings"
 )
 
 func Tools() []map[string]any {
@@ -21,7 +22,7 @@ func Tools() []map[string]any {
 		{"session_acquire", "Acquire exclusive five-minute device lease before control.", nil, []string{"device_id"}},
 		{"session_release", "Release lease and cancel pending work.", nil, []string{"device_id"}},
 		{"system_info", "OS, user, session and backend capabilities.", nil, []string{"device_id"}},
-		{"desktop_screenshot", "Capture entire virtual desktop as PNG. Windows or X11 only.", nil, []string{"device_id"}},
+		{"desktop_screenshot", "Capture PNG: Windows/X11 desktop or the consented GNOME Wayland monitor. Includes frame metadata when available.", nil, []string{"device_id"}},
 		{"desktop_click", "Click at absolute desktop coordinates. button: left, right, middle; count: 1 or 2.", map[string]any{"x": num(), "y": num(), "button": str(), "count": num()}, []string{"device_id", "x", "y"}},
 		{"desktop_move", "Move mouse to absolute coordinates.", map[string]any{"x": num(), "y": num()}, []string{"device_id", "x", "y"}},
 		{"desktop_scroll", "Scroll signed wheel steps, positive is up.", map[string]any{"steps": num()}, []string{"device_id", "steps"}},
@@ -41,6 +42,9 @@ func Tools() []map[string]any {
 		}
 		for k, v := range d.props {
 			p[k] = v
+		}
+		if strings.HasPrefix(d.name, "desktop_") && d.name != "desktop_screenshot" {
+			p["frame_id"] = str()
 		}
 		req := d.required
 		if req == nil {
@@ -175,7 +179,7 @@ func (g *Gateway) mcp(w http.ResponseWriter, r *http.Request) {
 	var result any
 	switch req.Method {
 	case "initialize":
-		result = map[string]any{"protocolVersion": MCPVersion, "capabilities": map[string]any{"tools": map[string]any{}}, "serverInfo": map[string]string{"name": relaydesk.ID, "version": relaydesk.Version}, "instructions": "Use devices_list, then session_acquire. Release after task. Inspect screenshots; do not assume GUI actions succeeded. Only Windows interactive sessions and Linux X11 desktop automation are supported. Tool permissions may change; denied cached tools remain denied. Cancellation stops pending work, but cannot undo completed effects."}
+		result = map[string]any{"protocolVersion": MCPVersion, "capabilities": map[string]any{"tools": map[string]any{}}, "serverInfo": map[string]string{"name": relaydesk.ID, "version": relaydesk.Version}, "instructions": "Use devices_list, then session_acquire. Release after task. Inspect screenshots; do not assume GUI actions succeeded. Use a fresh screenshot before EACH GUI input and verify with another screenshot afterward. GNOME Wayland requires local portal consent; Windows requires an unlocked interactive session. Local Pause/Stop cancels jobs and requires a fresh lease after local Resume. Tool permissions may change; denied cached tools remain denied. Cancellation stops pending work, but cannot undo completed effects."}
 	case "ping":
 		result = map[string]any{}
 	case "tools/list":
@@ -197,7 +201,15 @@ func (g *Gateway) mcp(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			result = map[string]any{"isError": true, "content": []any{map[string]string{"type": "text", "text": err.Error()}}}
 		} else if m, ok := data.(map[string]any); ok && m["mimeType"] == "image/png" {
-			result = map[string]any{"content": []any{map[string]any{"type": "image", "mimeType": "image/png", "data": m["base64"]}, map[string]any{"type": "text", "text": fmt.Sprintf("Virtual desktop origin: (%v, %v), dimensions: %v x %v. Add origin to screenshot-relative coordinates.", m["origin_x"], m["origin_y"], m["width"], m["height"])}}}
+			metadata := map[string]any{}
+			for k, v := range m {
+				if k != "base64" && k != "mimeType" {
+					metadata[k] = v
+				}
+			}
+			metadata["coordinate_hint"] = "Add origin_x/origin_y to screenshot-relative pixels. A selected Wayland monitor has origin (0,0). Take a new screenshot before each input."
+			encoded, _ := json.Marshal(metadata)
+			result = map[string]any{"content": []any{map[string]any{"type": "image", "mimeType": "image/png", "data": m["base64"]}, map[string]any{"type": "text", "text": string(encoded)}}}
 		} else {
 			b, _ := json.Marshal(data)
 			result = map[string]any{"content": []any{map[string]string{"type": "text", "text": string(b)}}}

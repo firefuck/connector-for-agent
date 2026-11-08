@@ -34,8 +34,9 @@ secara retroaktif. Salinan yang sudah tersebar tidak hilang dengan mengganti
 visibility repository.
 
 Checksum tidak ditandatangani: jika penyerang mengganti binary dan manifest,
-checksum tetap bisa cocok. Belum ada Authenticode, tanda tangan rilis, verifikasi
-publisher saat install, atau layanan aktivasi. Tidak ada kill switch atau
+checksum tetap bisa cocok. Script build/sign Authenticode tersedia (lihat
+MANUAL_ACCEPTANCE.md), tetapi sertifikat belum tersedia dan belum ada artifact
+bertanda tangan yang diverifikasi di sini. Tidak ada layanan aktivasi. Tidak ada kill switch atau
 pengiriman credential ke server lisensi.
 
 Untuk membatasi akses source berikutnya, pemilik dapat menjadikan repository

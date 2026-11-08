@@ -12,6 +12,13 @@ own licenses. Python MCP/jsonschema and Node/Playwright are test dependencies;
 they are not embedded in the RelayDesk executable. Keep the notices shipped by
 those packages when distributing them.
 
+Desktop helpers also use the separately installed Python/PyGObject, GTK,
+GStreamer, PipeWire and desktop portal packages on Linux, and Windows
+PowerShell/.NET/WinForms on Windows. Their original distribution licenses remain
+applicable; RelayDesk does not relicense those runtimes. Inno Setup is an external
+Windows installer build tool; observe its distribution/license terms when
+building and distributing the resulting setup executable.
+
 ## Go runtime and standard library
 
 Copyright 2009 The Go Authors.

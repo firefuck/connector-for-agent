@@ -1,6 +1,6 @@
 # Rencana backend desktop RelayDesk
 
-Diperbarui 2026-11-07 setelah konfirmasi user. Dokumen ini spesifikasi dan backlog yang disetujui, belum implementasi backend atau hasil uji OS target.
+Diperbarui 2026-11-08. Spesifikasi tetap menjadi acceptance target; implementasi desktop aktif kini tersedia, dengan batas pengujian di STATUS.md dan langkah manual di MANUAL_ACCEPTANCE.md. Pengguna memilih menguji Windows sendiri.
 
 ## Kebutuhan yang dikunci
 
@@ -12,22 +12,22 @@ User sudah menurunkan prioritas RDP disconnected/terkunci. Menjaga kontrol saat 
 
 | Urutan | Tambahan | Hasil yang dituju | Status |
 | --- | --- | --- | --- |
-| 1 | GNOME Wayland pada desktop aktif | Screenshot dan input pada sesi kerja yang sama dengan consent user | Belum diimplementasikan |
-| 2 | Pause/Stop lokal, hotkey, dan prioritas kontrol manusia | User dapat mengambil alih dan menghentikan pekerjaan agent dari PC tujuan | Belum diimplementasikan |
-| 3 | Indikator sesi lokal | User melihat identitas agent/perangkat dan aktivitas kontrol | Belum diimplementasikan |
-| 4 | CLI `relaydesk doctor` | Diagnosis pairing, gateway, backend desktop, dependensi dan izin | Belum diimplementasikan |
+| 1 | GNOME Wayland pada desktop aktif | Screenshot dan input pada sesi kerja yang sama dengan consent user | Implementasi portal tersedia; acceptance GNOME asli belum |
+| 2 | Pause/Stop lokal, hotkey, dan prioritas kontrol manusia | User dapat mengambil alih dan menghentikan pekerjaan agent dari PC tujuan | Kontrol lokal tersedia; takeover GNOME otomatis tidak didukung, Windows belum diuji |
+| 3 | Indikator sesi lokal | User melihat identitas agent/perangkat dan aktivitas kontrol | Window GTK/WinForms tersedia; GTK diuji di Xvfb |
+| 4 | CLI `relaydesk doctor` | Diagnosis pairing, gateway, backend desktop, dependensi dan izin | CLI teks/JSON dan endpoint read-only tersedia |
 
-Pengambilan screenshot baru sebelum aksi GUI penting, pemeriksaan hasil, dan larangan replay setelah timeout menjadi bagian alur kontrol di semua tahap. Tidak ada klaim semua fitur tabel sudah tersedia pada binary saat ini.
+Pengambilan screenshot baru sebelum aksi GUI penting, pemeriksaan hasil, dan larangan replay setelah timeout menjadi bagian alur kontrol di semua tahap. Ketersediaan source/binary tidak menggantikan acceptance pada OS dan agent asli.
 
 ## Backend desktop aktif
 
 | Target | Komponen dan keputusan | Batas yang perlu diverifikasi |
 | --- | --- | --- |
-| GNOME Wayland | Helper per-user memakai RemoteDesktop portal + ScreenCast/PipeWire + libei, atau adaptor Desktop Sharing GNOME setelah verifikasi kemampuan host | Consent, versi portal/compositor, koordinat/scaling, Unicode, monitor, cancel, lock/revoke |
+| GNOME Wayland | Helper per-user memakai RemoteDesktop portal + ScreenCast/PipeWire + Notify* untuk baseline GNOME 42; libei bukan dependency versi ini | Consent, versi portal/compositor, koordinat/scaling, Unicode, monitor, cancel, lock/revoke |
 | Windows Server/10/11 | Backend user-session untuk desktop interaktif aktif; aplikasi/exec/file memakai token user | SID, session ID, input desktop, privilege aplikasi, DPI, monitor, Unicode |
 | Linux X11 | Pertahankan backend yang sudah diuji dengan Xvfb | Uji desktop fisik dan multimonitor tetap diperlukan |
 
-Versi distro/GNOME dan edisi/build Windows belum diketahui. Kemampuan upstream tidak otomatis tersedia pada host user. Riset rinci dan sumber primer: [Wayland/GNOME](RESEARCH_WAYLAND.md), [UAC](RESEARCH_WINDOWS_UAC.md), [RDP](RESEARCH_WINDOWS_RDP.md).
+Pengguna menyebut Ubuntu 22 dan Windows 11 VPS; baseline helper adalah Ubuntu 22.04/GNOME 42. Nomor patch distro/portal dan build Windows host belum diverifikasi. Kemampuan upstream tidak otomatis tersedia pada host user. Riset rinci dan sumber primer: [Wayland/GNOME](RESEARCH_WAYLAND.md), [UAC](RESEARCH_WINDOWS_UAC.md), [RDP](RESEARCH_WINDOWS_RDP.md).
 
 ## Pause/Stop, hotkey, dan takeover manusia
 
@@ -62,7 +62,7 @@ Doctor tidak melakukan pairing ulang, mengubah ACL, memasang paket, menonaktifka
 
 Session ID/user identity menjadi bagian target dan audit. Jika sesi berubah, compositor mencabut consent, Windows input desktop berubah, atau transport putus, tahan input dan invalidasi frame lama. Setelah koneksi kembali, ambil frame baru dan verifikasi sesi. Jangan mengulang klik, pengetikan atau exec dengan hasil ambigu.
 
-Sebelum aksi GUI penting, agent mengambil screenshot baru dari sesi/monitor tujuan dan memeriksa targetnya; sesudah aksi, periksa screenshot atau hasil yang relevan. Sertakan identitas sesi, waktu capture, monitor/origin/dimensi dan scale bila tersedia. Pergantian sesi/monitor/scaling membatalkan asumsi koordinat dari frame lama. Instruksi agent dan metadata membantu alur ini; enforcement berbasis frame memerlukan kontrak API tersendiri dan tidak boleh diklaim ada hanya dari dokumentasi.
+Sebelum aksi GUI penting, agent mengambil screenshot baru dari sesi/monitor tujuan dan memeriksa targetnya; sesudah aksi, periksa screenshot atau hasil yang relevan. Sertakan identitas sesi, waktu capture, monitor/origin/dimensi dan scale bila tersedia. Pergantian sesi/monitor/scaling membatalkan asumsi koordinat dari frame lama. Instruksi agent dan metadata membantu alur ini; connector interaktif sekarang menerapkan frame_id/umur 30 detik/sekali pakai yang terikat generasi dan agent; mode headless tidak menerapkan guard interaktif.
 
 Capability harus menyatakan keadaan nyata (`ready`, `needs_consent`, `locked`, `disconnected`, `session_ended`, `unsupported`) serta identitas backend/sesi. Keberadaan executable atau service bukan bukti capability ready. Screenshot hitam/error tidak boleh dilaporkan sebagai kontrol yang sukses. Auth, ACL device/tool, lease eksklusif, bounded decoding, deadline dan cancellation tetap dipertahankan.
 

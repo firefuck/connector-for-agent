@@ -12,10 +12,18 @@ import (
 	"os"
 	"path/filepath"
 	"relaydesk"
-	"runtime"
 	"strings"
 	"time"
 )
+
+type HTTPStatusError struct {
+	Status  int
+	Message string
+}
+
+func (e *HTTPStatusError) Error() string {
+	return fmt.Sprintf("gateway HTTP %d: %s", e.Status, e.Message)
+}
 
 type Client struct {
 	URL, Token string
@@ -76,7 +84,7 @@ func (c *Client) Post(ctx context.Context, path string, in, out any) error {
 		if len(message) > 1024 {
 			message = message[:1024] + "…"
 		}
-		return fmt.Errorf("gateway HTTP %d: %s", resp.StatusCode, message)
+		return &HTTPStatusError{Status: resp.StatusCode, Message: message}
 	}
 	if out == nil || len(body) == 0 {
 		return nil
@@ -107,83 +115,17 @@ func SaveConfig(path string, c Config) error {
 }
 func ReadConfig(path string) (Config, error) {
 	var c Config
-	b, e := os.ReadFile(path)
+	f, e := openRegularFile(path, os.O_RDONLY)
+	if e != nil {
+		return c, e
+	}
+	defer f.Close()
+	b, e := io.ReadAll(io.LimitReader(f, maxControlBodyBytes+1))
+	if len(b) > maxControlBodyBytes {
+		return c, errors.New("configuration too large")
+	}
 	if e == nil {
 		e = json.Unmarshal(b, &c)
 	}
 	return c, e
-}
-func RunConnector(ctx context.Context, c *Client) error {
-	delay := time.Second
-	for ctx.Err() == nil {
-		pctx, cancel := context.WithTimeout(ctx, 8*time.Second)
-		var raw json.RawMessage
-		e := c.Post(pctx, "/poll", map[string]any{"platform": runtime.GOOS, "capabilities": Capabilities()}, &raw)
-		cancel()
-		if e != nil {
-			fmt.Fprintln(os.Stderr, "Connection unavailable:", e)
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-time.After(delay):
-			}
-			if delay < 20*time.Second {
-				delay *= 2
-			}
-			continue
-		}
-		delay = time.Second
-		var cmd Command
-		if json.Unmarshal(raw, &cmd) != nil || cmd.ID == "" {
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-time.After(time.Second):
-			}
-			continue
-		}
-		if time.Now().After(cmd.Deadline) {
-			continue
-		}
-		work, cancelWork := context.WithDeadline(ctx, cmd.Deadline)
-		finished := make(chan struct{})
-		go func() {
-			ticker := time.NewTicker(time.Second)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-finished:
-					return
-				case <-work.Done():
-					return
-				case <-ticker.C:
-					var state struct {
-						Active bool `json:"active"`
-					}
-					check, cc := context.WithTimeout(work, 3*time.Second)
-					e := c.Post(check, "/check", map[string]any{"id": cmd.ID, "platform": runtime.GOOS, "capabilities": Capabilities()}, &state)
-					cc()
-					if e != nil || !state.Active {
-						cancelWork()
-						return
-					}
-				}
-			}
-		}()
-		fmt.Fprintln(os.Stderr, "Running", cmd.Action, "job", cmd.ID)
-		data, err := Execute(work, cmd)
-		close(finished)
-		cancelWork()
-		result := Result{Data: data}
-		if err != nil {
-			result = Result{Error: err.Error()}
-		}
-		send, sc := context.WithTimeout(ctx, 5*time.Second)
-		e = c.Post(send, "/result", map[string]any{"id": cmd.ID, "platform": runtime.GOOS, "capabilities": Capabilities(), "result": result}, nil)
-		sc()
-		if e != nil {
-			fmt.Fprintln(os.Stderr, "Result not delivered; action will NOT be replayed:", e)
-		}
-	}
-	return nil
 }

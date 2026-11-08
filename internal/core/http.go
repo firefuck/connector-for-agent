@@ -107,7 +107,11 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.pair(w, r)
 		return
 	}
-	if r.URL.Path == "/poll" || r.URL.Path == "/result" || r.URL.Path == "/check" {
+	if r.URL.Path == "/diagnose" {
+		g.diagnose(w, r)
+		return
+	}
+	if r.URL.Path == "/connector-state" || r.URL.Path == "/poll" || r.URL.Path == "/result" || r.URL.Path == "/check" {
 		g.connector(w, r)
 		return
 	}

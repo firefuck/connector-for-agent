@@ -3,6 +3,8 @@ package core
 import "time"
 
 type Device struct {
+	LocalEpoch   string    `json:"local_epoch,omitempty"`
+	Paused       bool      `json:"paused"`
 	ID           string    `json:"id"`
 	Name         string    `json:"name"`
 	Key          string    `json:"key,omitempty"`
@@ -29,10 +31,16 @@ type State struct {
 	Pairs   map[string]Pair
 }
 type Command struct {
-	ID       string         `json:"id"`
-	Action   string         `json:"action"`
-	Args     map[string]any `json:"args"`
-	Deadline time.Time      `json:"deadline"`
+	DeviceID   string         `json:"device_id,omitempty"`
+	LeaseID    string         `json:"lease_id,omitempty"`
+	LocalEpoch string         `json:"local_epoch,omitempty"`
+	DeviceName string         `json:"device_name,omitempty"`
+	AgentID    string         `json:"agent_id,omitempty"`
+	AgentName  string         `json:"agent_name,omitempty"`
+	ID         string         `json:"id"`
+	Action     string         `json:"action"`
+	Args       map[string]any `json:"args"`
+	Deadline   time.Time      `json:"deadline"`
 }
 type Result struct {
 	Data  any    `json:"data,omitempty"`
@@ -46,6 +54,7 @@ type job struct {
 	delivered bool
 }
 type lease struct {
+	ID    string    `json:"id,omitempty"`
 	Owner string    `json:"owner"`
 	Until time.Time `json:"until"`
 }

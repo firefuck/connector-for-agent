@@ -15,7 +15,7 @@ trap 'rm -rf "$root"' EXIT HUP INT TERM
 mkdir -p "$root/DEBIAN" "$root/usr/share/doc/relaydesk" "$root/usr/bin" "$root/usr/share/applications" "$root/usr/share/relaydesk" "$root/usr/share/icons/hicolor/scalable/apps"
 cp dist/relaydesk-linux-amd64 "$root/usr/bin/relaydesk"
 cp packaging/relaydesk.desktop "$root/usr/share/applications/"
-cp packaging/autostart-linux.sh packaging/uninstall-linux.sh "$root/usr/share/relaydesk/"
+cp packaging/autostart-linux.sh packaging/uninstall-linux.sh packaging/hotkey-linux.py "$root/usr/share/relaydesk/"
 cp packaging/relaydesk.svg "$root/usr/share/icons/hicolor/scalable/apps/"
 cp LICENSE NOTICE THIRD_PARTY_NOTICES.md "$root/usr/share/doc/relaydesk/"
 cat NOTICE LICENSE THIRD_PARTY_NOTICES.md > "$root/usr/share/doc/relaydesk/copyright"
@@ -26,9 +26,10 @@ Section: net
 Priority: optional
 Architecture: amd64
 Maintainer: RelayDesk Project <maintainer@example.invalid>
-Depends: xdotool, imagemagick, xclip, xdg-utils
+Depends: xdotool, imagemagick, xclip, xdg-utils, python3, python3-gi, gir1.2-gtk-3.0, gir1.2-gstreamer-1.0, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-pipewire, xdg-desktop-portal
+Recommends: xdg-desktop-portal-gnome
 Description: Agent desktop gateway and connector for private WireGuard networks
- Supports Windows interactive sessions and Linux X11 desktop control.
+ Supports interactive desktop control with local consent and session controls.
 CONTROL
 find "$root" -type d -exec chmod 755 {} +
 find "$root" -type f -exec chmod 644 {} +

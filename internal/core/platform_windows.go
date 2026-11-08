@@ -95,11 +95,20 @@ public class Desk {
  [StructLayout(LayoutKind.Sequential)] public struct KEY {public ushort vk,scan; public uint flags,time;public UIntPtr extra;}
  [StructLayout(LayoutKind.Sequential)] public struct MOUSE {public int x,y;public uint data,flags,time;public UIntPtr extra;}
  [DllImport("user32.dll",SetLastError=true)] public static extern uint SendInput(uint n,INPUT[] inputs,int size);
+ [DllImport("user32.dll",SetLastError=true)] static extern IntPtr OpenInputDesktop(uint flags,bool inherit,uint access);
+ [DllImport("user32.dll")] static extern bool CloseDesktop(IntPtr desktop);
+ [DllImport("user32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern bool GetUserObjectInformation(IntPtr obj,int index,System.Text.StringBuilder value,int length,out int needed);
+ public static void CheckDesktop(){
+  if(System.Diagnostics.Process.GetCurrentProcess().SessionId==0)throw new Exception("Interactive user session required");
+  IntPtr d=OpenInputDesktop(0,false,1);if(d==IntPtr.Zero)throw new Exception("Input desktop unavailable: unlock locally or approve UAC locally");
+  try{int n;var name=new System.Text.StringBuilder(256);if(!GetUserObjectInformation(d,2,name,512,out n)||!String.Equals(name.ToString(),"Default",StringComparison.OrdinalIgnoreCase))throw new Exception("Secure or locked desktop; user action required");}finally{CloseDesktop(d);}
+ }
  public static void Type(string s){foreach(char ch in s){var a=new INPUT[2];a[0].type=1;a[0].u.ki.scan=ch;a[0].u.ki.flags=4;a[1]=a[0];a[1].u.ki.flags=6;if(SendInput(2,a,Marshal.SizeOf(typeof(INPUT)))!=2)throw new Exception("SendInput failed; check desktop/session privileges");}}
 }
 '@
 `
-const winDispatch = `$a=$p.args
+const winDispatch = `[Desk]::CheckDesktop()
+$a=$p.args
 switch($p.action){
  'desktop_screenshot' {
  $r=[Windows.Forms.SystemInformation]::VirtualScreen
