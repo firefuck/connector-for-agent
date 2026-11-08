@@ -8,6 +8,17 @@ RelayDesk menghubungkan agent AI yang sudah lo punya ke PC Windows/Linux melalui
 
 **Lisensi proprietary:** publikasi source tidak memberi izin umum untuk memakai, memodifikasi, menjual, mendistribusikan ulang atau melakukan rebrand. Penggunaan di luar hak yang sudah berlaku memerlukan izin tertulis pemegang hak cipta. Lihat [LICENSE](LICENSE), [NOTICE](NOTICE), [komponen pihak ketiga](THIRD_PARTY_NOTICES.md), dan [batas perlindungan merek](docs/BRAND_PROTECTION.md). Panduan build/instalasi berikut ditujukan kepada pemilik dan pengguna yang mendapat izin.
 
+## Download aplikasi
+
+Paket siap unduh ada di **[GitHub Releases — v0.1.0-preview.1](https://github.com/firefuck/connector-for-agent/releases/tag/v0.1.0-preview.1)**. Tidak perlu build Go sendiri untuk mencoba aplikasi.
+
+| Platform | Download | Cara mulai |
+| --- | --- | --- |
+| Windows x64 | [EXE portable](https://github.com/firefuck/connector-for-agent/releases/download/v0.1.0-preview.1/relaydesk.exe) atau [ZIP lengkap + script install](https://github.com/firefuck/connector-for-agent/releases/download/v0.1.0-preview.1/RelayDesk-0.1.0-windows-amd64.zip) | Buka `relaydesk.exe`, lakukan pairing, lalu Resume di window lokal |
+| Ubuntu/Debian amd64 | [Paket DEB](https://github.com/firefuck/connector-for-agent/releases/download/v0.1.0-preview.1/relaydesk_0.1.0_amd64.deb) | `sudo apt install ./relaydesk_0.1.0_amd64.deb`, lalu `relaydesk` sebagai user desktop |
+
+Ini **preview**, EXE **portable/unsigned**, bukan installer wizard EXE yang sudah ditandatangani. Acceptance desktop GNOME/Windows asli masih mengikuti [panduan manual](docs/MANUAL_ACCEPTANCE.md). ZIP Windows menyertakan notice dan script pemasangan per-user; pilih ZIP bila ingin paket lengkap. Release juga menyediakan binary Linux portable, `SHA256SUMS` dan `BUILDINFO.txt` untuk memeriksa hash serta asal commit. Source tetap mengikuti lisensi proprietary di atas.
+
 ## Daftar isi
 
 - [Tampilan dashboard](#tampilan-dashboard)
