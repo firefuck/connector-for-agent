@@ -1,0 +1,69 @@
+name: Publish RelayDesk preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/release.yml]
+
+concurrency:
+  group: relaydesk-preview-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      TAG: v0.1.0-preview.1
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.27.3'
+          cache: false
+      - name: Validate and build portable EXE and DEB
+        run: |
+          set -euo pipefail
+          go test -race ./...
+          go vet ./...
+          sh packaging/build.sh
+          python3 packaging/prepare-release.py
+          cd dist/release
+          sha256sum -c SHA256SUMS
+      - name: Upload and publish verified preview assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --json isDraft > /tmp/relaydesk-release-state.json; then
+            python3 -c 'import json; assert json.load(open("/tmp/relaydesk-release-state.json"))["isDraft"], "Refusing to replace a published release"'
+            gh release edit "$TAG" --target "$GITHUB_SHA" --draft=true --prerelease --title 'RelayDesk 0.1.0 Preview 1 — Windows EXE & Ubuntu DEB' --notes-file dist/release-notes.md
+          else
+            gh release create "$TAG" --target "$GITHUB_SHA" --draft --prerelease --title 'RelayDesk 0.1.0 Preview 1 — Windows EXE & Ubuntu DEB' --notes-file dist/release-notes.md
+          fi
+          gh release upload "$TAG" dist/release/* --clobber
+          gh release view "$TAG" --json assets > /tmp/relaydesk-release-assets.json
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          assets = {a['name']: a for a in json.load(open('/tmp/relaydesk-release-assets.json'))['assets']}
+          for path in Path('dist/release').iterdir():
+              if not path.is_file():
+                  continue
+              asset = assets[path.name]
+              assert asset['state'] == 'uploaded' and asset['size'] == path.stat().st_size, path.name
+              digest = asset.get('digest')
+              if digest:
+                  assert digest == 'sha256:' + hashlib.sha256(path.read_bytes()).hexdigest(), path.name
+          PY
+          gh release edit "$TAG" --draft=false --prerelease

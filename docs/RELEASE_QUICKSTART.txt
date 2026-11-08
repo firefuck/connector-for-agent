@@ -1,0 +1,35 @@
+RelayDesk 0.1.0 preview — paket siap pakai
+
+WINDOWS x64
+Paket ZIP: ekstrak seluruh folder. Buka dist/relaydesk.exe untuk wizard pairing.
+Jika mengunduh EXE langsung, buka relaydesk.exe. Binary ini portable dan unsigned.
+Window kontrol lokal mulai Pause. Klik Resume setelah pairing.
+Pemasangan per-user dan autostart (opsional, dari folder hasil ekstrak):
+powershell -NoProfile -File .\packaging\install-windows.ps1 -Persistent
+Uninstall: jalankan script yang sama dengan -Uninstall. Pairing tetap disimpan.
+
+UBUNTU / DEBIAN amd64
+sudo apt install ./relaydesk_0.1.0_amd64.deb
+Jalankan relaydesk sebagai user desktop, tanpa sudo.
+Pada GNOME, pastikan xdg-desktop-portal-gnome terpasang. Resume meminta consent
+berbagi satu monitor serta input keyboard/pointer.
+
+GATEWAY / PAIRING
+Jalankan gateway homelab sesuai README terlebih dahulu, lalu buat pairing code
+dari dashboard. Gunakan URL gateway yang dapat dicapai dari PC tujuan melalui
+WireGuard atau HTTPS. Jangan memakai localhost untuk gateway di mesin lain.
+Agent VPS dan Hermes memakai token terpisah serta URL MCP gateway yang sama.
+
+VERIFIKASI
+Di Linux, dari folder berisi semua asset: sha256sum -c SHA256SUMS
+Di PowerShell: Get-FileHash .\relaydesk.exe -Algorithm SHA256
+Bandingkan dengan baris relaydesk.exe pada SHA256SUMS. Checksum tidak ditandatangani.
+
+BATAS PREVIEW
+EXE ini bukan installer wizard Setup.exe. GNOME/Windows asli, installer dan dua
+agent pengguna belum diuji end-to-end. Takeover otomatis GNOME tidak tersedia;
+gunakan Pause/shortcut. UAC secure desktop dan RDP disconnected tidak didukung.
+Lisensi proprietary dan notice berlaku; lihat LICENSE dan THIRD_PARTY_NOTICES.md.
+
+Panduan lengkap: https://github.com/firefuck/connector-for-agent/blob/@COMMIT@/docs/MANUAL_ACCEPTANCE.md
+README: https://github.com/firefuck/connector-for-agent/blob/@COMMIT@/README.md
