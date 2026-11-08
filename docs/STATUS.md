@@ -59,6 +59,9 @@ terkirim. Tes black-box diulang hingga lulus. Detail tambahan di test-results.tx
 
 ## Yang belum dapat dinyatakan selesai
 
+- Publikasi EXE/DEB di GitHub Releases: paket lokal tersedia, tetapi preview masih
+  draft tanpa aset. Unggah langsung ditolak HTTP 401; Actions tidak mulai karena
+  akun terkunci akibat billing. [Status dan langkah lanjut](RELEASE_PUBLISHING.md).
 - Acceptance GNOME Ubuntu 22.04 asli: consent accept/deny/revoke, lock/unlock,
   monitor/scaling/hotplug, Unicode/IME, browser dan VS Code. Host asli belum diakses.
 - Windows 11/10/Server: WinForms, physical takeover versus injected input,
