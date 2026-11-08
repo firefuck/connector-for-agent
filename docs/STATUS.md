@@ -57,11 +57,18 @@ Tes lokal menemukan dan memperbaiki dua race/perilaku: hasil shell yang dibatalk
 semula belum `isError`; dan Stop dapat keluar sebelum marker tersimpan/ACK IPC
 terkirim. Tes black-box diulang hingga lulus. Detail tambahan di test-results.txt.
 
+## Publikasi paket
+
+[Prerelease v0.1.0-preview.1](https://github.com/firefuck/connector-for-agent/releases/tag/v0.1.0-preview.1)
+sudah diterbitkan pada 8 November 2026 dengan 10 aset: EXE portable, ZIP Windows,
+DEB, binary Linux, legal notices, quickstart, build info dan checksum. Source
+paket: `f054c36af62e1e7d42d561c90d793d07688cffe7`. Semua aset diunduh ulang dan
+SHA-256 cocok. Link publik EXE/DEB/ZIP/checksum juga diperiksa tanpa token.
+Publikasi langsung berhasil; Actions masih terblokir billing. EXE unsigned.
+Lihat [catatan publikasi](RELEASE_PUBLISHING.md).
+
 ## Yang belum dapat dinyatakan selesai
 
-- Publikasi EXE/DEB di GitHub Releases: paket lokal tersedia, tetapi preview masih
-  draft tanpa aset. Unggah langsung ditolak HTTP 401; Actions tidak mulai karena
-  akun terkunci akibat billing. [Status dan langkah lanjut](RELEASE_PUBLISHING.md).
 - Acceptance GNOME Ubuntu 22.04 asli: consent accept/deny/revoke, lock/unlock,
   monitor/scaling/hotplug, Unicode/IME, browser dan VS Code. Host asli belum diakses.
 - Windows 11/10/Server: WinForms, physical takeover versus injected input,

@@ -60,13 +60,14 @@ installer belum dijalankan. Tidak boleh menyebut artifact sudah signed.
 
 ## Verifikasi dan pekerjaan berikutnya
 
-Publikasi paket: workflow `.github/workflows/release.yml` dan bundler
-`packaging/prepare-release.py` sudah tersedia. Draft `v0.1.0-preview.1`
-(release ID 438021942) masih tanpa aset. Upload dari sesi ditolak 401; run Actions
-42474649905 tidak mulai karena akun terkunci akibat billing. Jangan mengklaim
-link download aktif. Pemilik perlu menyelesaikan pembatasan akun lalu menjalankan
-workflow baru di main; lihat RELEASE_PUBLISHING.md. Paket lokal beserta checksum
-tersedia di dist/release; jangan commit binary atau credential ke Git.
+Publikasi paket selesai: prerelease `v0.1.0-preview.1` (release ID 438021942)
+sudah published dengan 10 aset, termasuk EXE portable, DEB dan ZIP Windows.
+Source paket/tag: f054c36af62e1e7d42d561c90d793d07688cffe7. Semua aset diunduh
+ulang dan SHA-256 cocok; link publik EXE/DEB/ZIP/checksum juga diperiksa tanpa
+token. Publikasi dilakukan langsung, bukan melalui Actions; run 42474649905
+terblokir billing. Jangan rerun workflow preview yang sama untuk mengganti aset;
+rilis berikutnya memerlukan versi/tag/nama aset baru. Lihat RELEASE_PUBLISHING.md.
+Jangan commit binary atau credential ke Git. Acceptance desktop asli tetap manual.
 
 Lihat STATUS.md dan test-results.txt untuk hasil yang benar-benar dijalankan.
 Tes baru: session_test.go, test_local_controls.py (GTK/Xvfb nyata, shell cancel,

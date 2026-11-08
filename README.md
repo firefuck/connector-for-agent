@@ -10,9 +10,7 @@ RelayDesk menghubungkan agent AI yang sudah lo punya ke PC Windows/Linux melalui
 
 ## Download aplikasi
 
-**Publikasi masih tertunda per 8 November 2026.** EXE, DEB dan ZIP sudah dibangun dan diperiksa di workspace pengembangan, tetapi belum tersedia di GitHub Releases. GitHub menolak memulai workflow karena masalah billing akun; unggah langsung dari sesi pengembangan juga ditolak (`401`). Lihat [status job](https://github.com/firefuck/connector-for-agent/actions/runs/42474649905) dan [panduan publikasi ulang](docs/RELEASE_PUBLISHING.md).
-
-Tautan berikut adalah tujuan download **setelah Release dipublikasikan**; selama draft belum diterbitkan, tautan ini belum dapat digunakan. Paket distribusi tidak membutuhkan Go di PC tujuan.
+Paket siap unduh tersedia di **[GitHub Releases — v0.1.0-preview.1](https://github.com/firefuck/connector-for-agent/releases/tag/v0.1.0-preview.1)**. EXE, DEB dan ZIP sudah diunggah; checksum hasil unduhan diverifikasi pada 8 November 2026. Paket distribusi tidak membutuhkan Go di PC tujuan. Lihat [catatan publikasi](docs/RELEASE_PUBLISHING.md).
 
 | Platform | Download | Cara mulai |
 | --- | --- | --- |

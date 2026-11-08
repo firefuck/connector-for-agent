@@ -2,43 +2,40 @@
 
 ## Status 8 November 2026
 
-Paket Windows x64 portable EXE, ZIP lengkap, Linux amd64 dan DEB sudah dibangun
-di workspace pengembangan. Checksum dan isi ZIP diperiksa; build/race suite/vet
-serta instalasi DEB terisolasi lulus. Ini bukan pengujian desktop Windows/GNOME
-asli. EXE unsigned, bukan installer Inno Setup.
+[Release v0.1.0-preview.1](https://github.com/firefuck/connector-for-agent/releases/tag/v0.1.0-preview.1)
+sudah diterbitkan sebagai prerelease dengan 10 aset:
 
-Release `v0.1.0-preview.1` masih **draft tanpa aset** saat pemeriksaan terakhir.
-Unggah langsung dari sesi pengembangan ditolak dengan HTTP 401. Workflow
+- Windows x64 portable `relaydesk.exe` dan ZIP lengkap.
+- Ubuntu/Debian amd64 DEB dan binary Linux portable.
+- `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md`.
+- `QUICKSTART.txt`, `BUILDINFO.txt`, dan `SHA256SUMS`.
+
+Source paket/tag: `f054c36af62e1e7d42d561c90d793d07688cffe7`.
+Semua aset diunduh kembali dari GitHub sebelum publikasi dan SHA-256 cocok.
+Sesudah publikasi, link download publik EXE/DEB/ZIP/checksum diperiksa tanpa token.
+Build/race suite/vet serta instalasi DEB terisolasi lulus. Ini bukan pengujian
+Windows/GNOME asli. EXE unsigned, bukan installer Inno Setup.
+
+Publikasi dilakukan dengan upload langsung yang diautentikasi. Workflow
 [Publish RelayDesk preview](https://github.com/firefuck/connector-for-agent/actions/workflows/release.yml)
-sudah dipush, tetapi [run pertama](https://github.com/firefuck/connector-for-agent/actions/runs/42474649905)
-gagal sebelum runner dimulai dengan pesan GitHub:
+tersedia, tetapi [run pertama](https://github.com/firefuck/connector-for-agent/actions/runs/42474649905)
+tidak dimulai karena pembatasan billing akun. Keberhasilan upload langsung tidak
+membuktikan masalah billing Actions sudah selesai.
 
-> The job was not started because your account is locked due to a billing issue.
+## Publikasi versi berikutnya
 
-## Melanjutkan lewat GitHub Actions
+Jangan rerun workflow preview untuk mengganti aset versi yang sudah published.
+Workflow sengaja menolak penggantian tersebut. Siapkan versi dan tag baru terlebih
+dahulu: perbarui versi aplikasi, nama aset/tag dalam bundler dan workflow,
+quickstart, catatan rilis, serta tautan README.
 
-1. Pemilik akun menyelesaikan pembatasan billing melalui pengaturan GitHub.
-2. Buka workflow **Publish RelayDesk preview**, pilih **Run workflow**, branch
-   `main`. Gunakan run baru agar mengambil dokumentasi terbaru.
-3. Workflow menjalankan race suite/vet, membangun EXE/DEB, menyiapkan ZIP/notices
-   dan checksum, lalu mengunggah aset ke draft. Token bawaan `GITHUB_TOKEN`
-   digunakan; tidak perlu menaruh PAT di source atau chat.
-4. Workflow memeriksa state dan ukuran aset, serta digest jika tersedia, sebelum
-   menerbitkan prerelease. Jika gagal, periksa langkah yang gagal; jangan
-   menerbitkan draft kosong secara manual.
-5. Buka [Release](https://github.com/firefuck/connector-for-agent/releases/tag/v0.1.0-preview.1)
-   dan pastikan EXE, ZIP, DEB, Linux binary, legal notices, `QUICKSTART.txt`,
-   `BUILDINFO.txt`, dan `SHA256SUMS` tersedia. Unduh aset lalu cocokkan checksum.
-6. Setelah berhasil, perbarui status publikasi di README, STATUS dan handoff.
+Untuk Actions, pemilik perlu menyelesaikan pembatasan billing sebelum menjalankan
+workflow baru. Token bawaan `GITHUB_TOKEN` digunakan dengan izin Contents write.
+Alternatifnya, build dan upload dari komputer pemilik yang memiliki autentikasi
+GitHub dengan izin Contents write pada repository ini. Simpan credential lewat
+secret environment atau fasilitas autentikasi lokal, bukan source/chat.
 
-Workflow menolak mengganti Release yang sudah published. Versi baru memerlukan
-tag, versi aplikasi, nama aset dan tautan dokumentasi yang sesuai.
-
-## Alternatif unggah dari komputer pemilik
-
-Jika Actions masih dibatasi, pemilik dapat memakai komputer dengan Go dan dpkg
-serta autentikasi GitHub yang memiliki izin upload Release. Dari checkout bersih
-commit yang ingin dirilis, di Linux:
+Dari checkout bersih commit yang ingin dirilis, di Linux:
 
 ```sh
 go test -race ./...
@@ -50,10 +47,11 @@ sha256sum -c SHA256SUMS
 ```
 
 `dist/release/` berisi seluruh aset; `dist/release-notes.md` berisi catatan rilis.
-Di GitHub Releases, edit draft `v0.1.0-preview.1`, gunakan commit sumber yang
-tercantum di `BUILDINFO.txt`, salin catatan rilis, dan unggah seluruh aset.
-Pertahankan opsi prerelease. Pastikan tidak ada aset versi sebelumnya, periksa
-nama/ukuran dan checksum hasil unduhan, baru publish. Jangan mengganti aset
-Release yang sudah dipublikasikan dengan build berbeda.
+Buat draft untuk tag baru di GitHub Releases dengan commit sumber yang tercantum
+di `BUILDINFO.txt`, salin catatan rilis, dan unggah seluruh aset. Pertahankan opsi
+prerelease selama acceptance desktop asli belum selesai. Periksa nama/ukuran
+serta checksum hasil unduhan, baru publish. Setelah published, periksa link
+unduhan publik dan perbarui README, STATUS serta handoff.
 
+Jangan mengganti aset Release yang sudah dipublikasikan dengan build berbeda.
 Panduan pemakaian dan acceptance desktop: [MANUAL_ACCEPTANCE.md](MANUAL_ACCEPTANCE.md).
