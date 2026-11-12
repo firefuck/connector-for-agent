@@ -25,15 +25,24 @@ func RunInteractiveConnector(ctx context.Context, c *Client, config string, head
 	defer stop()
 	session := NewLocalSession(!headless)
 	action := func(op string) {
-		if op == "stop" {
-			if e := writePrivateFile(marker, []byte("Stopped locally. Explicit start is required.\n")); e != nil {
-				fmt.Fprintln(os.Stderr, "Could not save local Stop marker; disable autostart manually")
+		switch op {
+		case "stop":
+			// Only an explicit local Stop while running is remembered. Signals,
+			// --duration, logout or a lost window end this process without
+			// disabling the next autostart, which starts paused anyway.
+			if ctx.Err() == nil {
+				if e := writePrivateFile(marker, []byte("Stopped locally. Explicit start is required.\n")); e != nil {
+					fmt.Fprintln(os.Stderr, "Could not save local Stop marker; disable autostart manually")
+				}
 			}
-			session.Change(op)
+			session.Change("stop")
 			stop()
-			return
+		case "lost":
+			session.Change("stop")
+			stop()
+		default:
+			session.Change(op)
 		}
-		session.Change(op)
 	}
 	external := make(chan string, 4)
 	localAction := func(op string) {

@@ -47,7 +47,11 @@ func itoa(n int) string {
 	return string(b)
 }
 func openURL(ctx context.Context, u string) (any, error) {
-	return run(ctx, ps(ctx, "$ErrorActionPreference='Stop'; Start-Process -FilePath '"+strings.ReplaceAll(u, "'", "''")+"'"))
+	result, e := run(ctx, ps(ctx, "$ErrorActionPreference='Stop'; Start-Process -FilePath '"+strings.ReplaceAll(u, "'", "''")+"'"))
+	if e == nil && result["exit_code"] != 0 {
+		return nil, errors.New(result["output"].(string))
+	}
+	return result, e
 }
 func desktop(ctx context.Context, action string, a map[string]any) (any, error) {
 	b, _ := json.Marshal(map[string]any{"action": action, "args": a})

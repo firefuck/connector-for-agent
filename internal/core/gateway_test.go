@@ -197,3 +197,53 @@ func TestToolInputValidation(t *testing.T) {
 		}
 	}
 }
+
+// A lease is granted for five minutes. Running an action must renew it, never
+// cut it down to the action timeout plus grace.
+func TestActionRenewsLeaseWithoutShorteningIt(t *testing.T) {
+	g, admin, _ := fixture(t)
+	device, id := pairDevice(t, admin)
+	token := agentToken(t, admin, []string{id})
+	post(t, device, "/poll", map[string]any{})
+	if _, e := g.Call(token, "session_acquire", map[string]any{"device_id": id}); e != nil {
+		t.Fatal(e)
+	}
+	g.mu.Lock()
+	granted := g.leases[id]
+	g.mu.Unlock()
+	done := make(chan error, 1)
+	go func() {
+		_, e := g.Call(token, "system_info", map[string]any{"device_id": id})
+		done <- e
+	}()
+	var command map[string]any
+	for deadline := time.Now().Add(2 * time.Second); command["id"] == nil; {
+		if time.Now().After(deadline) {
+			t.Fatal("job not delivered")
+		}
+		command = post(t, device, "/poll", map[string]any{})
+	}
+	g.mu.Lock()
+	during := g.leases[id]
+	g.mu.Unlock()
+	post(t, device, "/result", map[string]any{"id": command["id"], "result": Result{Data: "ok"}})
+	if e := <-done; e != nil {
+		t.Fatal(e)
+	}
+	if during.ID != granted.ID || during.Until.Before(granted.Until) {
+		t.Fatalf("action shortened the lease: granted until %v, now %v", granted.Until, during.Until)
+	}
+}
+
+func TestExpiredPairingCodesArePurged(t *testing.T) {
+	g, admin, _ := fixture(t)
+	g.mu.Lock()
+	g.State.Pairs["expired"] = Pair{"old", time.Now().Add(-time.Minute)}
+	g.mu.Unlock()
+	post(t, admin, "/admin/pair", map[string]string{"name": "new"})
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if _, kept := g.State.Pairs["expired"]; kept || len(g.State.Pairs) != 1 {
+		t.Fatalf("expired pairing code retained: %d codes", len(g.State.Pairs))
+	}
+}

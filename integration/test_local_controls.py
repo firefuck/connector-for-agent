@@ -93,7 +93,16 @@ def main():
                 assert config.exists() and Path(str(config)+'.stopped').exists()
                 stopped=subprocess.run([str(BINARY),'connector','--autostart','--config',str(config)],env=env,stdout=log,stderr=log,timeout=5)
                 assert stopped.returncode==0
-                print('PASS real GTK Resume, local Pause cancels shell, gateway sync, offline Stop, pairing preservation and autostart Stop marker.')
+                # A manual start clears the marker. Losing the display (logout, X
+                # server exit) ends the connector but is not a local Stop.
+                connector=start([str(BINARY),'connector','--config',str(config)],env)
+                wait(window_id,'local GTK window after manual start')
+                assert not Path(str(config)+'.stopped').exists(),'manual start kept the Stop marker'
+                xvfb.kill();xvfb.wait()
+                assert connector.wait(timeout=8)==0
+                time.sleep(.3)
+                assert not Path(str(config)+'.stopped').exists(),'display loss was recorded as a local Stop'
+                print('PASS real GTK Resume, local Pause cancels shell, gateway sync, offline Stop, pairing preservation, autostart Stop marker and no marker after display loss.')
                 print('Xvfb test only; GNOME portal and Windows runtime require manual acceptance.')
             except Exception:
                 print((tmp/'process.log').read_text(errors='replace')[-4000:])

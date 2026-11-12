@@ -286,7 +286,7 @@ class Window:
         emit(event='ready',backend='portal' if WAYLAND else 'x11',takeover=False)
 
     def key(self,window,event):
-        if event.state & Gdk.ModifierType.CONTROL_MASK and event.state & Gdk.ModifierType.MOD1_MASK and Gdk.keyval_name(event.keyval).lower()=='p':
+        if event.state & Gdk.ModifierType.CONTROL_MASK and event.state & Gdk.ModifierType.MOD1_MASK and (Gdk.keyval_name(event.keyval) or '').lower()=='p':
             self.pause(); return True
         return False
 

@@ -62,7 +62,8 @@ foreach($name in @('Pause','Resume','Stop')){
  else{$button.add_Click({Emit 'stop';$form.Close()})}
  $form.Controls.Add($button);$i++
 }
-$form.add_FormClosing({Emit 'stop'})
+# Logoff/shutdown closes the window too; only a user Stop disables autostart.
+$form.add_FormClosing({param($sender,$e) if($e.CloseReason -ne [Windows.Forms.CloseReason]::WindowsShutDown){Emit 'stop'}})
 $timer=New-Object Windows.Forms.Timer
 $timer.Interval=100
 [PipeReader]::Start()

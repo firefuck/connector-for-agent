@@ -37,6 +37,11 @@ func (g *Gateway) admin(w http.ResponseWriter, r *http.Request) {
 			}
 			return 200, map[string]any{"devices": ds, "agents": as, "leases": g.leases}
 		case "/admin/pair":
+			for hash, p := range g.State.Pairs {
+				if time.Now().After(p.Expires) {
+					delete(g.State.Pairs, hash)
+				}
+			}
 			code := Secret()
 			g.State.Pairs[Hash(code)] = Pair{in.Name, time.Now().Add(pairingLifetime)}
 			if e := g.save(); e != nil {

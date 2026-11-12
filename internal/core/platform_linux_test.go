@@ -28,6 +28,19 @@ func TestLinuxGUIRefusesWaylandAndMissingSession(t *testing.T) {
 	}
 }
 
+func TestLinuxKeyChordUsesX11KeysymNames(t *testing.T) {
+	for input, want := range map[string]string{"F5": "F5", "ctrl+f12": "ctrl+F12", "Shift+Insert": "shift+Insert", "alt+f4": "alt+F4", "ctrl+shift+P": "ctrl+shift+p", "enter": "Return", "f": "f", "f25": "f25"} {
+		if got, err := x11Chord(input); err != nil || got != want {
+			t.Errorf("x11Chord(%q) = %q, %v; want %q", input, got, err, want)
+		}
+	}
+	for _, input := range []string{"", "ctrl++", "ctrl+-x", "a b"} {
+		if _, err := x11Chord(input); err == nil {
+			t.Errorf("x11Chord(%q) accepted", input)
+		}
+	}
+}
+
 func TestLinuxDesktopBackendFailure(t *testing.T) {
 	if _, err := desktopRun(context.Background(), exec.CommandContext(context.Background(), "/bin/sh", "-c", "printf 'X display unavailable' >&2; exit 7")); err == nil || !strings.Contains(err.Error(), "X display unavailable") {
 		t.Fatalf("backend failure was hidden: %v", err)
@@ -86,6 +99,7 @@ func TestLinuxX11BlackBox(t *testing.T) {
 	type widgetState struct {
 		Text                    string
 		Clicks, Scrolls, Chords int
+		FunctionKeys            int
 	}
 	wait := func(check func(widgetState) bool) {
 		t.Helper()
@@ -135,6 +149,11 @@ func TestLinuxX11BlackBox(t *testing.T) {
 	call("desktop_key", map[string]any{"key": "ctrl+l"})
 	wait(func(s widgetState) bool { return s.Chords == 1 })
 	call("desktop_key", map[string]any{"key": "escape"})
+	call("desktop_key", map[string]any{"key": "f5"})
+	wait(func(s widgetState) bool { return s.FunctionKeys == 1 })
+	if _, err := Execute(ctx, Command{Action: "desktop_key", Args: map[string]any{"key": "nosuchkeyname"}}); err == nil {
+		t.Fatal("unknown key reported as pressed")
+	}
 	call("desktop_scroll", map[string]any{"steps": float64(-2)})
 	wait(func(s widgetState) bool { return s.Scrolls == 2 })
 }
@@ -146,7 +165,7 @@ root.geometry("500x300+50+50")
 root.title("RelayDesk isolated X11 integration test")
 text = tk.Text(root)
 text.pack(fill="both", expand=True)
-counts = {"Clicks": 0, "Scrolls": 0, "Chords": 0}
+counts = {"Clicks": 0, "Scrolls": 0, "Chords": 0, "FunctionKeys": 0}
 def count(key):
     counts[key] += 1
 text.bind("<Button-1>", lambda event: count("Clicks"))
@@ -154,6 +173,7 @@ text.bind("<Button-4>", lambda event: count("Scrolls"))
 text.bind("<Button-5>", lambda event: count("Scrolls"))
 text.bind("<MouseWheel>", lambda event: count("Scrolls"))
 text.bind("<Control-l>", lambda event: count("Chords"))
+text.bind("<F5>", lambda event: count("FunctionKeys"))
 root.update()
 text.focus_force()
 def save():
