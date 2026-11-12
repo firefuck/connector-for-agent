@@ -112,7 +112,13 @@ func (g *Gateway) CallContext(ctx context.Context, key, name string, args map[st
 	}
 	j := &job{Command: Command{DeviceID: id, LeaseID: l.ID, ID: Secret()[:24], Action: name, Args: args, Deadline: now.Add(time.Duration(seconds) * time.Second), LocalEpoch: d.LocalEpoch, DeviceName: d.Name, AgentID: a.ID, AgentName: a.Name}, owner: owner, device: id, done: make(chan Result, 1)}
 	g.jobs[j.ID] = j
-	g.leases[id] = lease{ID: l.ID, Owner: owner, Until: j.Deadline.Add(leaseCompletionGrace)}
+	// Each action renews the lease. It must outlive the action, and it must
+	// never end earlier than the lease the agent already held.
+	until := now.Add(defaultLeaseDuration)
+	if completion := j.Deadline.Add(leaseCompletionGrace); completion.After(until) {
+		until = completion
+	}
+	g.leases[id] = lease{ID: l.ID, Owner: owner, Until: until}
 	g.log("dispatch", owner, id, name)
 	g.mu.Unlock()
 	timer := time.NewTimer(time.Until(j.Deadline))

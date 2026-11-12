@@ -17,6 +17,8 @@ type Gateway struct {
 	jobs        map[string]*job
 	leases      map[string]lease
 	audit       *os.File
+	auditBytes  int64
+	limiter     authLimiter
 	closed      bool
 	mcpRequests map[string]context.CancelFunc
 }
@@ -57,8 +59,23 @@ func NewGateway(path, admin string) (*Gateway, error) {
 	if e = os.MkdirAll(filepath.Dir(path), 0700); e != nil {
 		return nil, e
 	}
-	g.audit, e = os.OpenFile(path+".audit.jsonl", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
-	return g, e
+	if e = g.openAudit(); e != nil {
+		return nil, e
+	}
+	return g, nil
+}
+func (g *Gateway) openAudit() error {
+	f, e := os.OpenFile(g.Path+".audit.jsonl", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	if e != nil {
+		return e
+	}
+	info, e := f.Stat()
+	if e != nil {
+		f.Close()
+		return e
+	}
+	g.audit, g.auditBytes = f, info.Size()
+	return nil
 }
 func (g *Gateway) save() error {
 	b, e := json.MarshalIndent(g.State, "", "  ")
@@ -67,6 +84,26 @@ func (g *Gateway) save() error {
 	}
 	return writePrivateFile(g.Path, b)
 }
+
+// log appends one audit record; callers hold g.mu. The log keeps one previous
+// generation (".1"), so it uses at most about twice maxAuditBytes on disk.
 func (g *Gateway) log(event, actor, device, action string) {
-	_ = json.NewEncoder(g.audit).Encode(map[string]any{"time": time.Now().UTC(), "event": event, "actor": actor, "device": device, "action": action})
+	b, e := json.Marshal(map[string]any{"time": time.Now().UTC(), "event": event, "actor": actor, "device": device, "action": action})
+	if e != nil || g.closed {
+		return
+	}
+	b = append(b, '\n')
+	if g.auditBytes > 0 && g.auditBytes+int64(len(b)) > maxAuditBytes {
+		// Keep appending to the current file if the rename cannot be done.
+		if os.Rename(g.Path+".audit.jsonl", g.Path+".audit.jsonl.1") == nil {
+			old := g.audit
+			if g.openAudit() == nil {
+				old.Close()
+			} else {
+				g.audit = old
+			}
+		}
+	}
+	n, _ := g.audit.Write(b)
+	g.auditBytes += int64(n)
 }

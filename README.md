@@ -196,11 +196,23 @@ export RELAYDESK_ADMIN_TOKEN=TOKEN_DARI_PERINTAH_TADI
   --state ./data/state.json
 ```
 
-Perintah ini berjalan di foreground. Gunakan supervisor milik host jika ingin gateway otomatis berjalan lagi setelah reboot; repo belum menyediakan unit systemd gateway.
+Perintah ini berjalan di foreground. Supaya gateway otomatis berjalan lagi setelah reboot, pakai contoh unit systemd `packaging/relaydesk-gateway.service` (pada DEB: `/usr/share/relaydesk/relaydesk-gateway.service`). Unit ini tidak diaktifkan otomatis oleh paket:
+
+```sh
+sudo install -d -m 0700 /etc/relaydesk
+# Isi file: RELAYDESK_ADMIN_TOKEN=... dan opsional RELAYDESK_LISTEN=10.20.0.10:8787
+sudo install -m 0600 /dev/null /etc/relaydesk/gateway.env
+sudoedit /etc/relaydesk/gateway.env
+sudo cp /usr/share/relaydesk/relaydesk-gateway.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now relaydesk-gateway
+```
+
+Unit memakai binary `/usr/bin/relaydesk`, user dinamis tanpa privilege, dan menyimpan state di `/var/lib/relaydesk/state.json`. Tanpa `RELAYDESK_LISTEN` gateway hanya bind ke loopback. Unit lolos `systemd-analyze verify`, tetapi belum dijalankan pada host systemd asli; cek `systemctl status relaydesk-gateway` setelah memasang.
 
 ### HTTP, HTTPS, dan firewall
 
-- HTTP remote hanya digunakan pada rute WireGuard privat yang sudah diverifikasi. Connector/bridge memerlukan `--wireguard-http` atau konfirmasi wizard untuk HTTP non-loopback. Flag ini **tidak membuat tunnel VPN**.
+- HTTP tanpa flag hanya diterima untuk loopback (`127.0.0.1`, `[::1]`, `localhost`). HTTP remote hanya digunakan pada rute WireGuard privat yang sudah diverifikasi. Connector/bridge memerlukan `--wireguard-http` atau konfirmasi wizard untuk HTTP non-loopback. Flag ini **tidak membuat tunnel VPN**.
 - Izinkan agent, connector, dan browser admin menghubungi IP gateway pada TCP 8787. Connector melakukan polling outbound; tidak memerlukan port inbound khusus di PC tujuan.
 - Untuk rute selain jaringan privat terpercaya, gunakan HTTPS. Binary gateway mendukung TLS langsung:
 
@@ -500,8 +512,10 @@ Izin tool **bukan sandbox OS**. Shell mempunyai hak user connector. Tool file da
 | Screenshot X11 | PNG maksimal 8 MiB |
 | Body HTTP | Pair 4 KiB; admin/poll/check 64 KiB; result/MCP 12 MiB |
 | Request aktif | Bridge 32 request + 16 notification; gateway MCP 256 request |
+| Autentikasi gagal | 30 per menit per alamat IP, lalu HTTP 429 |
+| Audit log | Rotasi pada 8 MiB, satu generasi lama |
 
-Revocation menghentikan dispatch baru dan connector mengecek pembatalan pekerjaan aktif sekitar 1–4 detik. Tidak ada undo efek OS yang sudah selesai. Audit mencatat waktu, actor, device dan action tanpa isi file/perintah; rotasi audit, quota dan rate limit belum tersedia.
+Revocation menghentikan dispatch baru dan connector mengecek pembatalan pekerjaan aktif sekitar 1–4 detik. Tidak ada undo efek OS yang sudah selesai. Audit mencatat waktu, actor, device dan action tanpa isi file/perintah. File audit dirotasi pada 8 MiB dengan satu generasi lama (`.audit.jsonl.1`). Gateway membatasi tebakan credential: setelah 30 autentikasi gagal dalam 1 menit dari satu alamat IP, semua request ber-credential dari alamat itu dijawab HTTP 429 sampai jendela berakhir, termasuk yang tokennya benar. Di belakang reverse proxy semua client terlihat sebagai satu alamat. Quota state dan rate limit per-identitas belum tersedia.
 
 Jika revoke melaporkan kegagalan menyimpan state, akses dicabut di memori tetapi disk lama dapat aktif lagi setelah restart. Perbaiki penyimpanan dan ulangi revoke sampai berhasil sebelum restart. Batas lain dan hasil scan ada di [audit keamanan](docs/SECURITY_REVIEW.md); hasil scan bukan jaminan bebas semua kerentanan.
 
@@ -522,6 +536,7 @@ Jika revoke melaporkan kegagalan menyimpan state, akses dicabut di memori tetapi
 | `connector must run inside the logged-in desktop session` | Jalankan connector dari terminal sesi GUI user, bukan daemon headless/sudo |
 | `device is controlled by another agent` | Lepaskan lease dari agent pemilik atau tunggu kedaluwarsa; jangan memulai dua connector untuk mengatasinya |
 | Tool tidak muncul / forbidden | Cek preset atau daftar tool agent. Refresh discovery setelah perubahan izin lalu acquire sesi baru |
+| HTTP 429 `too many failed authentication attempts` | Ada client di alamat IP yang sama yang berulang kali memakai token/kode salah. Perbaiki atau hentikan client itu, lalu tunggu sampai 1 menit |
 | `/mcp` memberi 405 di browser | Normal untuk GET; gunakan client MCP HTTP yang mengirim POST dan bearer token |
 | API create agent menolak `tools` | Kirim array eksplisit, misalnya `["devices_list"]`, `[]`, atau `["*"]` |
 | Token baru hilang setelah menutup drawer / request timeout | Token tidak dapat ditampilkan ulang. Periksa daftar; revoke akses yang tokennya hilang lalu buat baru. Jangan retry mutasi secara buta |

@@ -56,6 +56,24 @@ func desktopRun(ctx context.Context, c *exec.Cmd) (map[string]any, error) {
 	}
 	return result, nil
 }
+
+// x11Chord maps the case-insensitive chord accepted by desktop_key to X11
+// keysym names, which are case-sensitive (F5, Insert, Return).
+func x11Chord(key string) (string, error) {
+	aliases := map[string]string{"enter": "Return", "return": "Return", "win": "super", "cmd": "super", "meta": "super", "esc": "Escape", "escape": "Escape", "backspace": "BackSpace", "delete": "Delete", "del": "Delete", "insert": "Insert", "ins": "Insert", "pageup": "Prior", "pgup": "Prior", "pagedown": "Next", "pgdn": "Next", "left": "Left", "right": "Right", "up": "Up", "down": "Down", "tab": "Tab", "home": "Home", "end": "End", "printscreen": "Print", "print": "Print", "capslock": "Caps_Lock", "menu": "Menu", "pause": "Pause"}
+	parts := strings.Split(strings.ToLower(key), "+")
+	for i, part := range parts {
+		if part == "" || strings.HasPrefix(part, "-") || strings.ContainsAny(part, " \t\r\n") {
+			return "", errors.New("invalid key chord")
+		}
+		if alias, ok := aliases[part]; ok {
+			parts[i] = alias
+		} else if n, err := strconv.Atoi(strings.TrimPrefix(part, "f")); err == nil && n >= 1 && n <= 24 && part == "f"+strconv.Itoa(n) {
+			parts[i] = "F" + strconv.Itoa(n)
+		}
+	}
+	return strings.Join(parts, "+"), nil
+}
 func desktop(ctx context.Context, action string, a map[string]any) (any, error) {
 	if os.Getenv("XDG_SESSION_TYPE") == "wayland" {
 		return nil, errors.New("Wayland GUI requires the interactive portal helper; start connector without --headless and approve sharing locally")
@@ -101,18 +119,16 @@ func desktop(ctx context.Context, action string, a map[string]any) (any, error) 
 		time.Sleep(250 * time.Millisecond)
 		return result, err
 	case "desktop_key":
-		key := strings.ToLower(value(a, "key"))
-		aliases := map[string]string{"enter": "Return", "win": "super", "esc": "Escape", "escape": "Escape", "backspace": "BackSpace", "delete": "Delete", "pageup": "Prior", "pagedown": "Next", "left": "Left", "right": "Right", "up": "Up", "down": "Down", "tab": "Tab", "home": "Home", "end": "End"}
-		parts := strings.Split(key, "+")
-		for i, part := range parts {
-			if part == "" || strings.HasPrefix(part, "-") || strings.ContainsAny(part, " \t\r\n") {
-				return nil, errors.New("invalid key chord")
-			}
-			if alias, ok := aliases[part]; ok {
-				parts[i] = alias
-			}
+		chord, err := x11Chord(value(a, "key"))
+		if err != nil {
+			return nil, err
 		}
-		return desktopRun(ctx, exec.CommandContext(ctx, "xdotool", "key", "--clearmodifiers", strings.Join(parts, "+")))
+		result, err := desktopRun(ctx, exec.CommandContext(ctx, "xdotool", "key", "--clearmodifiers", chord))
+		// xdotool skips a key name it does not know and still exits 0.
+		if err == nil && strings.Contains(result["output"].(string), "No such key name") {
+			return nil, errors.New("unsupported key in chord; nothing may have been pressed")
+		}
+		return result, err
 	case "desktop_move", "desktop_click":
 		x := strconv.Itoa(integer(a, "x"))
 		y := strconv.Itoa(integer(a, "y"))

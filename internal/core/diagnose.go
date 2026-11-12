@@ -13,6 +13,7 @@ func (g *Gateway) diagnose(w http.ResponseWriter, r *http.Request) {
 	d := g.device(bearer(r))
 	if d == nil {
 		g.mu.Unlock()
+		g.authFailed(r)
 		fail(w, 401, "device revoked or unknown")
 		return
 	}

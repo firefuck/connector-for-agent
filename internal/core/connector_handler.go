@@ -11,6 +11,7 @@ func (g *Gateway) connector(w http.ResponseWriter, r *http.Request) {
 	authorized := g.device(bearer(r)) != nil
 	g.mu.Unlock()
 	if !authorized {
+		g.authFailed(r)
 		fail(w, 401, "device revoked or unknown")
 		return
 	}

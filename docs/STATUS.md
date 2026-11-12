@@ -57,6 +57,40 @@ Tes lokal menemukan dan memperbaiki dua race/perilaku: hasil shell yang dibatalk
 semula belum `isError`; dan Stop dapat keluar sebelum marker tersimpan/ACK IPC
 terkirim. Tes black-box diulang hingga lulus. Detail tambahan di test-results.txt.
 
+## Perbaikan hasil review 2026-11-12
+
+Belum masuk paket `v0.1.0-preview.1`; perlu build/rilis baru.
+
+- Lease: aksi sebelumnya memotong lease 5 menit menjadi timeout aksi + 1 menit
+  (default 2 menit). Sekarang tiap aksi memperbarui lease ke 5 menit dan tidak
+  pernah memendekkannya. Tes regresi Go.
+- X11 `desktop_key`: nama tombol di-lowercase sehingga `f5`, `insert` dll.
+  diabaikan xdotool tetapi dilaporkan sukses. Sekarang F1–F24/Insert/Print dll.
+  dipetakan ke keysym X11 dan nama tak dikenal menjadi error. Diuji Xvfb + Tk.
+- Marker Stop: sebelumnya ikut tertulis saat display hilang (logout/X server
+  mati) dan saat SIGTERM/Ctrl+C dengan gateway lambat, sehingga autostart
+  berikutnya menolak jalan. Sekarang hanya Stop lokal eksplisit (tombol, tutup
+  window, `control --op stop`) yang menulis marker; connector tetap berhenti saat
+  window hilang. Diuji GTK nyata di Xvfb, bukan logout GNOME asli.
+- Kode pairing kedaluwarsa sekarang dibersihkan dari state saat kode baru dibuat.
+- Windows, **hanya cross-compile, belum dijalankan di Windows**: `browser_open`
+  yang gagal kini menjadi error; penutupan window karena logoff/shutdown tidak
+  lagi dikirim sebagai Stop. Masukkan ke acceptance manual Windows.
+
+Tambahan pada tanggal yang sama (juga belum masuk paket preview):
+
+- Gateway: limiter autentikasi gagal 30/menit per alamat IP (HTTP 429, tercatat
+  di audit), perbandingan admin token constant-time, rotasi audit 8 MiB dengan
+  satu generasi lama, dan `http://[::1]` diterima sebagai loopback. Tes Go.
+- Wizard tanpa argumen menunggu Enter setelah error bila stdin terminal, supaya
+  pesan terbaca di console hasil double-click. Diuji pada pty Linux; console
+  Windows belum dijalankan.
+- `packaging/relaydesk-gateway.service`: contoh unit systemd, ikut di DEB tetapi
+  tidak diaktifkan. Lolos `systemd-analyze verify`; belum dijalankan di host
+  systemd asli.
+- Workflow Pylint diganti CI Go (gofmt, vet Linux/Windows, test race, build).
+  Belum pernah berjalan di GitHub: Actions masih terblokir billing.
+
 ## Publikasi paket
 
 [Prerelease v0.1.0-preview.1](https://github.com/firefuck/connector-for-agent/releases/tag/v0.1.0-preview.1)
@@ -81,7 +115,7 @@ Lihat [catatan publikasi](RELEASE_PUBLISHING.md).
   desktop aktif. Tidak ada privileged service broker atau auto-login.
 - mTLS/device keypair, short-lived auth/OAuth, passkey/2FA, DPAPI/keychain,
   WebSocket/video/PTY/output streaming, chunked transfer, DOM/CDP, drag,
-  monitor enumeration, failover, rate limits, audit rotation, durable jobs dan
+  monitor enumeration, failover, rate limit per-identitas, durable jobs dan
   upgrade orchestration tetap backlog lanjutan.
 
 ## Fitur dan audit sebelumnya yang dipertahankan

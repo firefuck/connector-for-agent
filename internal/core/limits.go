@@ -22,4 +22,8 @@ const (
 	leaseCompletionGrace      = time.Minute
 	defaultActionTimeout      = 60 * time.Second
 	maxActionTimeout          = 300 * time.Second
+	maxAuthFailures           = 30
+	authFailureWindow         = time.Minute
+	maxTrackedClients         = 4096
+	maxAuditBytes             = 8 << 20
 )

@@ -68,7 +68,7 @@ func StartNativeHelper(ctx context.Context, action func(string)) (*NativeHelper,
 	}()
 	go func() {
 		defer close(h.done)
-		defer action("stop") // Losing the visible local control must fail closed.
+		defer action("lost") // Losing the visible local control must fail closed.
 		scanner := bufio.NewScanner(output)
 		scanner.Buffer(make([]byte, 65536), maxMessageBytes)
 		var once sync.Once

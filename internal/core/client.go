@@ -35,7 +35,7 @@ func NewClient(raw, token string, wireguard bool) (*Client, error) {
 	if e != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
 		return nil, errors.New("invalid gateway URL")
 	}
-	if u.Scheme != "https" && !(u.Scheme == "http" && (wireguard || u.Hostname() == "127.0.0.1" || u.Hostname() == "localhost")) {
+	if u.Scheme != "https" && !(u.Scheme == "http" && (wireguard || u.Hostname() == "127.0.0.1" || u.Hostname() == "::1" || u.Hostname() == "localhost")) {
 		return nil, errors.New("HTTPS required; --wireguard-http permits HTTP on your trusted WireGuard route")
 	}
 	return &Client{raw, token, &http.Client{Timeout: 320 * time.Second, CheckRedirect: func(r *http.Request, v []*http.Request) error { return http.ErrUseLastResponse }}}, nil

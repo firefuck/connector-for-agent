@@ -27,6 +27,12 @@ func main() {
 			os.Exit(int(code))
 		}
 		fmt.Fprintln(os.Stderr, "Error:", e)
+		// The wizard is usually started by double-click, in a console that
+		// closes on exit. Keep the error readable; never wait when scripted.
+		if info, se := os.Stdin.Stat(); len(os.Args) < 2 && se == nil && info.Mode()&os.ModeCharDevice != 0 {
+			fmt.Fprint(os.Stderr, "Press Enter to close. ")
+			_, _ = bufio.NewReader(os.Stdin).ReadString('\n')
+		}
 		os.Exit(1)
 	}
 }

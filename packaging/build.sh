@@ -15,7 +15,7 @@ trap 'rm -rf "$root"' EXIT HUP INT TERM
 mkdir -p "$root/DEBIAN" "$root/usr/share/doc/relaydesk" "$root/usr/bin" "$root/usr/share/applications" "$root/usr/share/relaydesk" "$root/usr/share/icons/hicolor/scalable/apps"
 cp dist/relaydesk-linux-amd64 "$root/usr/bin/relaydesk"
 cp packaging/relaydesk.desktop "$root/usr/share/applications/"
-cp packaging/autostart-linux.sh packaging/uninstall-linux.sh packaging/hotkey-linux.py "$root/usr/share/relaydesk/"
+cp packaging/autostart-linux.sh packaging/uninstall-linux.sh packaging/hotkey-linux.py packaging/relaydesk-gateway.service "$root/usr/share/relaydesk/"
 cp packaging/relaydesk.svg "$root/usr/share/icons/hicolor/scalable/apps/"
 cp LICENSE NOTICE THIRD_PARTY_NOTICES.md "$root/usr/share/doc/relaydesk/"
 cat NOTICE LICENSE THIRD_PARTY_NOTICES.md > "$root/usr/share/doc/relaydesk/copyright"
