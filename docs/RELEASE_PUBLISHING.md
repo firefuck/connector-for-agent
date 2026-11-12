@@ -29,15 +29,11 @@ diterbitkan sebagai prerelease lewat upload manual oleh pemilik. Workflow rilis
 [dicoba lagi](https://github.com/firefuck/connector-for-agent/actions/runs/43249794076)
 dan tetap tidak dimulai. Source paket: `e7ab765b2bfc3cff5480cf086a7bf0680e297233`.
 
-Yang masih perlu dirapikan di halaman release:
+Kesepuluh aset diunduh ulang tanpa token dan `sha256sum -c SHA256SUMS` cocok.
 
-- Unggah `relaydesk.exe` (ada di `preview2-assets.zip` dan di ZIP Windows);
-  sampai itu dilakukan, `sha256sum -c` memerlukan `--ignore-missing`.
-- Hapus aset `env` dan `preview2-assets.zip`, dan pindahkan isi
-  `release-notes.md` ke deskripsi release.
-
-Setelah `relaydesk.exe` terunggah dan hash-nya cocok, kembalikan link EXE
-langsung di README.
+Kerapian yang tersisa di halaman release, tidak memengaruhi unduhan: hapus aset
+tambahan `env` (salinan `SHA256SUMS`) dan `preview2-assets.zip`, dan pindahkan
+isi `release-notes.md` ke deskripsi release.
 
 ## Publikasi versi berikutnya
 
