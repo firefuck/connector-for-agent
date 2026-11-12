@@ -59,7 +59,7 @@ terkirim. Tes black-box diulang hingga lulus. Detail tambahan di test-results.tx
 
 ## Perbaikan hasil review 2026-11-12
 
-Belum masuk paket `v0.1.0-preview.1`; perlu build/rilis baru.
+Tidak ada di paket `v0.1.0-preview.1`; masuk mulai `v0.1.0-preview.2`.
 
 - Lease: aksi sebelumnya memotong lease 5 menit menjadi timeout aksi + 1 menit
   (default 2 menit). Sekarang tiap aksi memperbarui lease ke 5 menit dan tidak
@@ -77,7 +77,7 @@ Belum masuk paket `v0.1.0-preview.1`; perlu build/rilis baru.
   yang gagal kini menjadi error; penutupan window karena logoff/shutdown tidak
   lagi dikirim sebagai Stop. Masukkan ke acceptance manual Windows.
 
-Tambahan pada tanggal yang sama (juga belum masuk paket preview):
+Tambahan pada tanggal yang sama (juga mulai `v0.1.0-preview.2`):
 
 - Gateway: limiter autentikasi gagal 30/menit per alamat IP (HTTP 429, tercatat
   di audit), perbandingan admin token constant-time, rotasi audit 8 MiB dengan

@@ -1,4 +1,4 @@
-RelayDesk 0.1.0 preview — paket siap pakai
+RelayDesk 0.1.0 preview 2 — paket siap pakai
 
 WINDOWS x64
 Paket ZIP: ekstrak seluruh folder. Buka dist/relaydesk.exe untuk wizard pairing.
@@ -10,6 +10,7 @@ Uninstall: jalankan script yang sama dengan -Uninstall. Pairing tetap disimpan.
 
 UBUNTU / DEBIAN amd64
 sudo apt install ./relaydesk_0.1.0_amd64.deb
+Sudah memasang preview 1 (versi paket sama, 0.1.0)? Tambahkan --reinstall.
 Jalankan relaydesk sebagai user desktop, tanpa sudo.
 Pada GNOME, pastikan xdg-desktop-portal-gnome terpasang. Resume meminta consent
 berbagi satu monitor serta input keyboard/pointer.
