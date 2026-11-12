@@ -105,6 +105,7 @@ func (g *Gateway) mcp(w http.ResponseWriter, r *http.Request) {
 	}
 	g.mu.Unlock()
 	if owner == "" {
+		g.authFailed(r)
 		fail(w, 401, "unauthorized agent")
 		return
 	}

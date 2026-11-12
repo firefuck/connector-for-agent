@@ -91,6 +91,9 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	if g.authBlocked(w, r) {
+		return
+	}
 	if r.URL.Path == "/mcp" {
 		g.mcp(w, r)
 		return

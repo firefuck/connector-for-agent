@@ -78,8 +78,10 @@ Mock portal/Xvfb bukan GNOME. Acceptance Ubuntu 22.04 asli mencakup consent
 accept/deny/revoke, lock/unlock, scaling/monitor/Unicode. Windows 11/10/Server,
 installer, signature dan dua agent asli mengikuti MANUAL_ACCEPTANCE.md oleh user.
 Takeover otomatis GNOME tidak tersedia; tombol dan shortcut adalah fallback nyata.
-Backlog lanjutan mTLS, streaming, durable jobs, rate limit, audit rotation, broker
-UAC/RDP dan sebagainya belum diimplementasikan oleh perubahan ini.
+Backlog lanjutan mTLS, streaming, durable jobs, rate limit per-identitas, broker
+UAC/RDP dan sebagainya belum diimplementasikan. Sejak 2026-11-12 ada limiter
+autentikasi gagal per IP (`ratelimit.go`), rotasi audit, unit systemd contoh dan
+workflow CI Go; lihat bagian review di STATUS.md.
 
 Jalankan gofmt, race suite, vet dan packaging/build.sh sesuai AGENTS. Di workspace
 ini Go berada di /workspace/scratch/go/bin; dependency X11/typelib uji diekstrak

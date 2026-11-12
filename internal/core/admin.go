@@ -1,12 +1,14 @@
 package core
 
 import (
+	"crypto/subtle"
 	"net/http"
 	"time"
 )
 
 func (g *Gateway) admin(w http.ResponseWriter, r *http.Request) {
-	if Hash(bearer(r)) != g.Admin {
+	if subtle.ConstantTimeCompare([]byte(Hash(bearer(r))), []byte(g.Admin)) != 1 {
+		g.authFailed(r)
 		fail(w, 401, "unauthorized")
 		return
 	}
@@ -127,9 +129,16 @@ func (g *Gateway) pair(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &in) {
 		return
 	}
+	rejected := false
+	defer func() {
+		if rejected {
+			g.authFailed(r)
+		}
+	}()
 	g.respondLocked(w, func() (int, any) {
 		p, ok := g.State.Pairs[Hash(in.Code)]
 		if !ok || time.Now().After(p.Expires) {
+			rejected = true
 			return 403, map[string]string{"error": "invalid or expired pairing code"}
 		}
 		token := Secret()

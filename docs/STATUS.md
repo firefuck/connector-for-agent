@@ -77,6 +77,20 @@ Belum masuk paket `v0.1.0-preview.1`; perlu build/rilis baru.
   yang gagal kini menjadi error; penutupan window karena logoff/shutdown tidak
   lagi dikirim sebagai Stop. Masukkan ke acceptance manual Windows.
 
+Tambahan pada tanggal yang sama (juga belum masuk paket preview):
+
+- Gateway: limiter autentikasi gagal 30/menit per alamat IP (HTTP 429, tercatat
+  di audit), perbandingan admin token constant-time, rotasi audit 8 MiB dengan
+  satu generasi lama, dan `http://[::1]` diterima sebagai loopback. Tes Go.
+- Wizard tanpa argumen menunggu Enter setelah error bila stdin terminal, supaya
+  pesan terbaca di console hasil double-click. Diuji pada pty Linux; console
+  Windows belum dijalankan.
+- `packaging/relaydesk-gateway.service`: contoh unit systemd, ikut di DEB tetapi
+  tidak diaktifkan. Lolos `systemd-analyze verify`; belum dijalankan di host
+  systemd asli.
+- Workflow Pylint diganti CI Go (gofmt, vet Linux/Windows, test race, build).
+  Belum pernah berjalan di GitHub: Actions masih terblokir billing.
+
 ## Publikasi paket
 
 [Prerelease v0.1.0-preview.1](https://github.com/firefuck/connector-for-agent/releases/tag/v0.1.0-preview.1)
@@ -101,7 +115,7 @@ Lihat [catatan publikasi](RELEASE_PUBLISHING.md).
   desktop aktif. Tidak ada privileged service broker atau auto-login.
 - mTLS/device keypair, short-lived auth/OAuth, passkey/2FA, DPAPI/keychain,
   WebSocket/video/PTY/output streaming, chunked transfer, DOM/CDP, drag,
-  monitor enumeration, failover, rate limits, audit rotation, durable jobs dan
+  monitor enumeration, failover, rate limit per-identitas, durable jobs dan
   upgrade orchestration tetap backlog lanjutan.
 
 ## Fitur dan audit sebelumnya yang dipertahankan
