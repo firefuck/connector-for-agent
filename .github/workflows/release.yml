@@ -21,7 +21,7 @@ jobs:
     permissions:
       contents: write
     env:
-      TAG: v0.1.0-preview.1
+      TAG: v0.1.0-preview.2
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -47,9 +47,9 @@ jobs:
           set -euo pipefail
           if gh release view "$TAG" --json isDraft > /tmp/relaydesk-release-state.json; then
             python3 -c 'import json; assert json.load(open("/tmp/relaydesk-release-state.json"))["isDraft"], "Refusing to replace a published release"'
-            gh release edit "$TAG" --target "$GITHUB_SHA" --draft=true --prerelease --title 'RelayDesk 0.1.0 Preview 1 — Windows EXE & Ubuntu DEB' --notes-file dist/release-notes.md
+            gh release edit "$TAG" --target "$GITHUB_SHA" --draft=true --prerelease --title 'RelayDesk 0.1.0 Preview 2 — Windows EXE & Ubuntu DEB' --notes-file dist/release-notes.md
           else
-            gh release create "$TAG" --target "$GITHUB_SHA" --draft --prerelease --title 'RelayDesk 0.1.0 Preview 1 — Windows EXE & Ubuntu DEB' --notes-file dist/release-notes.md
+            gh release create "$TAG" --target "$GITHUB_SHA" --draft --prerelease --title 'RelayDesk 0.1.0 Preview 2 — Windows EXE & Ubuntu DEB' --notes-file dist/release-notes.md
           fi
           gh release upload "$TAG" dist/release/* --clobber
           gh release view "$TAG" --json assets > /tmp/relaydesk-release-assets.json

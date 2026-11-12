@@ -8,7 +8,7 @@ import subprocess
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-TAG = 'v0.1.0-preview.1'
+TAG = 'v0.1.0-preview.2'
 OUT = ROOT / 'dist' / 'release'
 
 def command(*args):
