@@ -97,12 +97,12 @@ Tambahan pada tanggal yang sama (juga mulai `v0.1.0-preview.2`):
 diterbitkan pemilik pada 12 November 2026 lewat upload manual; Actions masih
 terblokir billing. Paket dibangun dari `e7ab765b2bfc3cff5480cf086a7bf0680e297233`
 dengan Go 1.24.7; tag menunjuk merge commit `902b2cd` dengan tree yang sama.
-Sembilan aset diunduh ulang tanpa token dan SHA-256 cocok dengan build: ZIP
-Windows, DEB, binary Linux, legal notices, quickstart, build info dan checksum.
-**`relaydesk.exe` terpisah belum terunggah** (link 404); EXE tersedia di dalam ZIP.
-Release juga memuat tiga file tambahan di luar rencana: `preview2-assets.zip`
-(bundel seluruh aset, hash cocok dengan build), `env` (salinan `SHA256SUMS`) dan
-`release-notes.md`; deskripsi release kosong. Rilis sebelumnya:
+Kesepuluh aset diunduh ulang tanpa token dan SHA-256 cocok dengan build: EXE
+portable, ZIP Windows, DEB, binary Linux, legal notices, quickstart, build info
+dan checksum. EXE unsigned. Saat pemeriksaan terakhir release masih memuat tiga
+file tambahan di luar rencana: `preview2-assets.zip` (bundel seluruh aset, hash
+cocok dengan build), `env` (salinan `SHA256SUMS`) dan `release-notes.md`.
+Rilis sebelumnya:
 
 [Prerelease v0.1.0-preview.1](https://github.com/firefuck/connector-for-agent/releases/tag/v0.1.0-preview.1)
 sudah diterbitkan pada 8 November 2026 dengan 10 aset: EXE portable, ZIP Windows,
