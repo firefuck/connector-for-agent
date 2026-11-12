@@ -60,7 +60,12 @@ installer belum dijalankan. Tidak boleh menyebut artifact sudah signed.
 
 ## Verifikasi dan pekerjaan berikutnya
 
-Publikasi paket selesai: prerelease `v0.1.0-preview.1` (release ID 438021942)
+Prerelease `v0.1.0-preview.2` (release ID 443154532, source e7ab765) terbit
+12 November 2026 lewat upload manual pemilik: 9 aset terverifikasi, tetapi
+`relaydesk.exe` terpisah belum terunggah dan ada aset tambahan yang perlu
+dirapikan; lihat RELEASE_PUBLISHING.md. README menunjuk ke ZIP Windows dan DEB.
+
+Sebelumnya: prerelease `v0.1.0-preview.1` (release ID 438021942)
 sudah published dengan 10 aset, termasuk EXE portable, DEB dan ZIP Windows.
 Source paket/tag: f054c36af62e1e7d42d561c90d793d07688cffe7. Semua aset diunduh
 ulang dan SHA-256 cocok; link publik EXE/DEB/ZIP/checksum juga diperiksa tanpa

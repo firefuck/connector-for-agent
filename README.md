@@ -10,12 +10,14 @@ RelayDesk menghubungkan agent AI yang sudah lo punya ke PC Windows/Linux melalui
 
 ## Download aplikasi
 
-Paket siap unduh tersedia di **[GitHub Releases — v0.1.0-preview.1](https://github.com/firefuck/connector-for-agent/releases/tag/v0.1.0-preview.1)**. EXE, DEB dan ZIP sudah diunggah; checksum hasil unduhan diverifikasi pada 8 November 2026. Paket distribusi tidak membutuhkan Go di PC tujuan. Lihat [catatan publikasi](docs/RELEASE_PUBLISHING.md).
+Paket siap unduh tersedia di **[GitHub Releases — v0.1.0-preview.2](https://github.com/firefuck/connector-for-agent/releases/tag/v0.1.0-preview.2)**. DEB, ZIP Windows dan binary Linux sudah diunggah; checksum hasil unduhan publik diverifikasi pada 12 November 2026. Paket distribusi tidak membutuhkan Go di PC tujuan. Lihat [catatan publikasi](docs/RELEASE_PUBLISHING.md).
 
 | Platform | Download | Cara mulai |
 | --- | --- | --- |
-| Windows x64 | [EXE portable](https://github.com/firefuck/connector-for-agent/releases/download/v0.1.0-preview.1/relaydesk.exe) atau [ZIP lengkap + script install](https://github.com/firefuck/connector-for-agent/releases/download/v0.1.0-preview.1/RelayDesk-0.1.0-windows-amd64.zip) | Buka `relaydesk.exe`, lakukan pairing, lalu Resume di window lokal |
-| Ubuntu/Debian amd64 | [Paket DEB](https://github.com/firefuck/connector-for-agent/releases/download/v0.1.0-preview.1/relaydesk_0.1.0_amd64.deb) | `sudo apt install ./relaydesk_0.1.0_amd64.deb`, lalu `relaydesk` sebagai user desktop |
+| Windows x64 | [ZIP lengkap: EXE portable + script install](https://github.com/firefuck/connector-for-agent/releases/download/v0.1.0-preview.2/RelayDesk-0.1.0-windows-amd64.zip) | Ekstrak, buka `dist\relaydesk.exe`, lakukan pairing, lalu Resume di window lokal |
+| Ubuntu/Debian amd64 | [Paket DEB](https://github.com/firefuck/connector-for-agent/releases/download/v0.1.0-preview.2/relaydesk_0.1.0_amd64.deb) | `sudo apt install ./relaydesk_0.1.0_amd64.deb`, lalu `relaydesk` sebagai user desktop |
+
+Preview 2 belum menyediakan `relaydesk.exe` sebagai file terpisah; EXE yang sama ada di dalam ZIP. Karena `SHA256SUMS` tetap mencantumkannya, verifikasi dengan `sha256sum -c --ignore-missing SHA256SUMS`. Versi paket DEB tetap `0.1.0`: bila preview 1 sudah terpasang, gunakan `sudo apt install --reinstall ./relaydesk_0.1.0_amd64.deb`. [Preview 1](https://github.com/firefuck/connector-for-agent/releases/tag/v0.1.0-preview.1) tetap tersedia.
 
 Ini **preview**, EXE **portable/unsigned**, bukan installer wizard EXE yang sudah ditandatangani. Acceptance desktop GNOME/Windows asli masih mengikuti [panduan manual](docs/MANUAL_ACCEPTANCE.md). ZIP Windows menyertakan notice dan script pemasangan per-user; pilih ZIP bila ingin paket lengkap. Release juga menyediakan binary Linux portable, `SHA256SUMS` dan `BUILDINFO.txt` untuk memeriksa hash serta asal commit. Source tetap mengikuti lisensi proprietary di atas.
 

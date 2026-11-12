@@ -22,6 +22,23 @@ tersedia, tetapi [run pertama](https://github.com/firefuck/connector-for-agent/a
 tidak dimulai karena pembatasan billing akun. Keberhasilan upload langsung tidak
 membuktikan masalah billing Actions sudah selesai.
 
+## Status 12 November 2026
+
+[Release v0.1.0-preview.2](https://github.com/firefuck/connector-for-agent/releases/tag/v0.1.0-preview.2)
+diterbitkan sebagai prerelease lewat upload manual oleh pemilik. Workflow rilis
+[dicoba lagi](https://github.com/firefuck/connector-for-agent/actions/runs/43249794076)
+dan tetap tidak dimulai. Source paket: `e7ab765b2bfc3cff5480cf086a7bf0680e297233`.
+
+Yang masih perlu dirapikan di halaman release:
+
+- Unggah `relaydesk.exe` (ada di `preview2-assets.zip` dan di ZIP Windows);
+  sampai itu dilakukan, `sha256sum -c` memerlukan `--ignore-missing`.
+- Hapus aset `env` dan `preview2-assets.zip`, dan pindahkan isi
+  `release-notes.md` ke deskripsi release.
+
+Setelah `relaydesk.exe` terunggah dan hash-nya cocok, kembalikan link EXE
+langsung di README.
+
 ## Publikasi versi berikutnya
 
 Jangan rerun workflow preview untuk mengganti aset versi yang sudah published.
